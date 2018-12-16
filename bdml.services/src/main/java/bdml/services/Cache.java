@@ -1,4 +1,4 @@
-package bdml.core.service;
+package bdml.services;
 
 public interface Cache {
 

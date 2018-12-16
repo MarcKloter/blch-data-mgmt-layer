@@ -15,9 +15,9 @@ public class Dummy {
 		String dir = "./cache/";
 		String db = "myaddr";
 		String cipher = "AES";
-		String params = ";IFEXISTS=TRUE";
+		//String params = ";IFEXISTS=TRUE";
 		// else: INIT (http://www.h2database.com/html/features.html)
-//		String params = ";CIPHER=" + cipher;
+		String params = ";CIPHER=" + cipher;
 		String user = "myUser";
 		String pwd = "myPassword";
 		char[] filepwd = "test".toCharArray();

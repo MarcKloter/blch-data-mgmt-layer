@@ -1,7 +1,8 @@
 package bdml.cryptostore;
 
 import java.security.Key;
-import bdml.core.service.CryptographicStore;
+
+import bdml.services.CryptographicStore;
 
 public class CryptoStoreAdapter implements CryptographicStore {
 

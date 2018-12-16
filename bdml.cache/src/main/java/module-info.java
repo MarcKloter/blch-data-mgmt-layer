@@ -1,9 +1,10 @@
 module bdml.cache {
-	requires bdml.core;
-	requires h2;
-	requires java.sql;
+	requires bdml.services;
 	
 	exports bdml.cache;
 	
-	provides bdml.core.service.Cache with bdml.cache.CacheImpl;
+	provides bdml.services.Cache with bdml.cache.CacheImpl;
+
+	requires h2;
+	requires java.sql;
 }

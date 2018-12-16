@@ -11,6 +11,8 @@ public class Starter {
 		int port = 8545;
 		port(port);
 		
+		// TODO: Enable SSL (keystore file)
+		
 		// HTTPS POST routing
         post("/", (request, response) -> {
         	jsonRpcServer.handle(request.raw(), response.raw());

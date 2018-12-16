@@ -1,19 +1,16 @@
 package bdml.core;
 
-import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
 import java.security.Security;
-
 import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
 
-import org.apache.http.client.ClientProtocolException;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.util.encoders.Hex;
 
 public class Dummy {
-	public static void main(String[] args) throws GeneralSecurityException, ClientProtocolException, IOException {
+	public static void main(String[] args) throws GeneralSecurityException {
 		Security.addProvider(new BouncyCastleProvider());
 
 		String ipfsHash = "QmYA2fn8cMbVWo4v95RwcwJVyQsNtnEwHerfWR8UNtEwoE";
@@ -36,7 +33,7 @@ public class Dummy {
 		Cipher cipher = Cipher.getInstance("AES/CBC/PKCS7Padding", "BC");
 		cipher.init(Cipher.ENCRYPT_MODE, key);
 		byte[] ciphertext = cipher.doFinal(ipfsHash.getBytes());
-		System.out.println(Hex.encode(ciphertext));
+		System.out.println(Hex.toHexString(ciphertext));
 
 		// TODO: decryption
 	}

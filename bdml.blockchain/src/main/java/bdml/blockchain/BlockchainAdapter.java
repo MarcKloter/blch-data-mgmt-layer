@@ -3,7 +3,7 @@ package bdml.blockchain;
 import java.io.IOException;
 
 import bdml.blockchain.jsonrpc.JsonRpc;
-import bdml.core.service.Blockchain;
+import bdml.services.Blockchain;
 import blockchain.parity.GetTransactionByHash;
 import blockchain.parity.GetTransactionByHashResponse;
 import blockchain.parity.NewAccount;

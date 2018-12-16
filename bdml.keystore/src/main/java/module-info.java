@@ -1,5 +1,5 @@
 module bdml.keyserver {
-	requires bdml.core;
+	requires bdml.services;
 
-	provides bdml.core.service.KeyServer with bdml.keyserver.KeyServerAdapter;
+	provides bdml.services.KeyServer with bdml.keyserver.KeyServerAdapter;
 }

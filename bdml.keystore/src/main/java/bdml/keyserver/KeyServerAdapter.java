@@ -1,6 +1,6 @@
 package bdml.keyserver;
 
-import bdml.core.service.KeyServer;
+import bdml.services.KeyServer;
 
 public class KeyServerAdapter implements KeyServer {
 

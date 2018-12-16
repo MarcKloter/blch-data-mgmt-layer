@@ -4,22 +4,29 @@
 	xmlns="http://maven.apache.org/POM/4.0.0"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
 	<modelVersion>4.0.0</modelVersion>
+	
 	<parent>
 		<groupId>bdml</groupId>
 		<artifactId>blch-data-mgmt-layer</artifactId>
 		<version>1.0.0</version>
 	</parent>
+	
 	<artifactId>bdml.blockchain</artifactId>
 	<packaging>jar</packaging>
-	<name>bdml.blockchain</name>
-	<url>http://maven.apache.org</url>
-	<properties>
-		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-	</properties>
+	
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+			</plugin>
+		</plugins>
+	</build>
+	
 	<dependencies>
 		<dependency>
 			<groupId>bdml</groupId>
-			<artifactId>bdml.core</artifactId>
+			<artifactId>bdml.services</artifactId>
 			<version>1.0.0</version>
 		</dependency>
 		<!-- https://mvnrepository.com/artifact/org.apache.httpcomponents/httpclient -->
@@ -35,12 +42,4 @@
 			<version>2.8.5</version>
 		</dependency>
 	</dependencies>
-	<build>
-		<plugins>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-compiler-plugin</artifactId>
-			</plugin>
-		</plugins>
-	</build>
 </project>

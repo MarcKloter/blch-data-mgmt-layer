@@ -1,6 +1,6 @@
 package bdml.cache;
 
-import bdml.core.service.Cache;
+import bdml.services.Cache;
 
 public class CacheImpl implements Cache {
 	
