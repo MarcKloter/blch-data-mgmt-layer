@@ -10,7 +10,6 @@
 	<packaging>pom</packaging>
 
 	<properties>
-		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<jdk.version>11</jdk.version>
 		<output.directory>../target/</output.directory>
 	</properties>
@@ -22,7 +21,8 @@
 		<module>bdml.blockchain</module>
 		<module>bdml.cache</module>
 		<module>bdml.services</module>
-	</modules>
+        <module>bdml.ipfs</module>
+    </modules>
 
 	<build>
 		<pluginManagement>
