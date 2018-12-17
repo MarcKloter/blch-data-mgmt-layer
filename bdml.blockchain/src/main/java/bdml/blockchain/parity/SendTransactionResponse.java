@@ -1,4 +1,4 @@
-package blockchain.parity;
+package bdml.blockchain.parity;
 
 import bdml.blockchain.jsonrpc.JsonRpcResponse;
 
