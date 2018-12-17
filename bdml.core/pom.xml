@@ -31,7 +31,10 @@
                             <goal>shade</goal>
                         </goals>
                         <configuration>
+                            <outputDirectory>../target</outputDirectory>
+                            <finalName>${project.parent.artifactId}-${project.parent.version}</finalName>
                             <filters>
+                                <!-- exclude manifest signature files -->
                                 <filter>
                                     <artifact>*:*</artifact>
                                     <excludes>
@@ -41,47 +44,18 @@
                                     </excludes>
                                 </filter>
                             </filters>
-                            <artifactSet>
-                                <excludes>
-                                    <exclude>bdml:bdml.cache</exclude>
-                                </excludes>
-                            </artifactSet>
                             <transformers>
+                                <!-- main class -->
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>bdml.core.DummyCache</mainClass>
+                                    <mainClass>bdml.core.Starter</mainClass>
                                 </transformer>
                             </transformers>
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
                             <shadedArtifactAttached>true</shadedArtifactAttached>
-                            <shadedClassifierName>launcher</shadedClassifierName>
                         </configuration>
                     </execution>
                 </executions>
             </plugin>
-            <!--
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-dependency-plugin</artifactId>
-                <version>2.1</version>
-                <executions>
-                    <execution>
-                        <id>copy-dependencies</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>copy-dependencies</goal>
-                        </goals>
-                        <configuration>
-                            <outputDirectory>${project.build.directory}/lib</outputDirectory>
-                            <overWriteReleases>false</overWriteReleases>
-                            <overWriteSnapshots>false</overWriteSnapshots>
-                            <overWriteIfNewer>true</overWriteIfNewer>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            -->
-            <!-- <plugin> <groupId>org.apache.maven.plugins</groupId> <artifactId>maven-assembly-plugin</artifactId>
-                <configuration> <archive> <manifest> <mainClass>bdml.core.Starter</mainClass>
-                </manifest> </archive> </configuration> </plugin> -->
         </plugins>
     </build>
 
@@ -96,17 +70,31 @@
             <artifactId>bdml.cache</artifactId>
             <version>1.0.0</version>
         </dependency>
+        <dependency>
+            <groupId>bdml</groupId>
+            <artifactId>bdml.blockchain</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+        <dependency>
+            <groupId>bdml</groupId>
+            <artifactId>bdml.cryptostore</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+        <dependency>
+            <groupId>bdml</groupId>
+            <artifactId>bdml.keystore</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+        <dependency>
+            <groupId>bdml</groupId>
+            <artifactId>bdml.ipfs</artifactId>
+            <version>1.0.0</version>
+        </dependency>
         <!-- https://mvnrepository.com/artifact/org.bouncycastle/bcprov-jdk15on -->
         <dependency>
             <groupId>org.bouncycastle</groupId>
             <artifactId>bcprov-jdk15on</artifactId>
             <version>1.60</version>
-        </dependency>
-        <!-- https://mvnrepository.com/artifact/org.apache.httpcomponents/httpclient -->
-        <dependency>
-            <groupId>org.apache.httpcomponents</groupId>
-            <artifactId>httpclient</artifactId>
-            <version>4.5.6</version>
         </dependency>
         <!-- https://mvnrepository.com/artifact/com.github.briandilley.jsonrpc4j/jsonrpc4j -->
         <dependency>
@@ -114,23 +102,11 @@
             <artifactId>jsonrpc4j</artifactId>
             <version>1.5.3</version>
         </dependency>
-        <!-- https://mvnrepository.com/artifact/javax.servlet/javax.servlet-api -->
-        <dependency>
-            <groupId>javax.servlet</groupId>
-            <artifactId>javax.servlet-api</artifactId>
-            <version>4.0.1</version>
-        </dependency>
         <!-- https://mvnrepository.com/artifact/javax.portlet/portlet-api -->
         <dependency>
             <groupId>javax.portlet</groupId>
             <artifactId>portlet-api</artifactId>
             <version>3.0.1</version>
-        </dependency>
-        <!-- https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-databind -->
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-            <version>2.9.7</version>
         </dependency>
         <!-- https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-annotations -->
         <dependency>
@@ -143,12 +119,6 @@
             <groupId>com.sparkjava</groupId>
             <artifactId>spark-core</artifactId>
             <version>2.8.0</version>
-        </dependency>
-        <!-- https://mvnrepository.com/artifact/org.slf4j/slf4j-api -->
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
-            <version>1.7.25</version>
         </dependency>
         <!-- https://mvnrepository.com/artifact/org.slf4j/slf4j-simple -->
         <dependency>

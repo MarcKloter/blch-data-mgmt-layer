@@ -2,15 +2,13 @@ package bdml.blockchain;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
+
+import bdml.blockchain.parity.Transaction;
 import org.apache.http.client.ClientProtocolException;
 
 import bdml.blockchain.jsonrpc.JsonRpc;
-import blockchain.parity.GetTransactionByHash;
-import blockchain.parity.GetTransactionByHashResponse;
-import blockchain.parity.NewAccount;
-import blockchain.parity.NewAccountResponse;
-import blockchain.parity.SendTransaction;
-import blockchain.parity.SendTransactionResponse;
+import bdml.blockchain.parity.SendTransaction;
+import bdml.blockchain.parity.SendTransactionResponse;
 
 public class Dummy {
 	public static void main(String[] args) throws GeneralSecurityException, ClientProtocolException, IOException {
@@ -28,7 +26,7 @@ public class Dummy {
 		System.out.println(response.result);
 		
 //		String txHash = "0x3291c9e124e39f5d2c1dc969f56cad3a816dc9059949db15e7127cb799ba575f";
-		String txHash = "0x5485bdf0e66e7a26adab019854a9960022134f62df15d7b76aaca955a503ec8e";
+		String txHash = "0x68d91d291b840c9c9bd6adb2379fbffe77214a800da46a2629069db659215e64";
 		Transaction tx = bca.getTransactionByHash(txHash);
 //		System.out.println(tx.getInput());
 	}
