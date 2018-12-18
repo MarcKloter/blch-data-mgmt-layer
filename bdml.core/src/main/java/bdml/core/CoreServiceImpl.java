@@ -2,32 +2,33 @@ package bdml.core;
 
 import java.util.List;
 
-import bdml.core.objects.AccountObject;
-import bdml.core.objects.FilterObject;
-import bdml.core.objects.SubjectObject;
+import bdml.services.api.types.Account;
+import bdml.services.api.types.Filter;
+import bdml.services.api.types.Subject;
+import bdml.services.api.Core;
 
-public class CoreServiceImpl implements CoreService {
+public class CoreServiceImpl implements Core {
 
 	@Override
-	public String storeData(String data, AccountObject account, List<SubjectObject> subjects, List<String> linking) {
+	public String storeData(String data, Account account, List<Subject> subjects, List<String> linking) {
+		// TODO:
+		return null;
+	}
+
+	@Override
+	public List<String> listData(Account account, Filter filter) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public List<String> listData(AccountObject account, FilterObject filter) {
+	public String getData(String id, Account account) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public String getData(String id, AccountObject account) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public List<SubjectObject> listSubjects() {
+	public List<Subject> listSubjects() {
 		// TODO Auto-generated method stub
 		return null;
 	}

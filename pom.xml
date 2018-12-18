@@ -23,7 +23,7 @@
 		<module>bdml.services</module>
         <module>bdml.ipfs</module>
     </modules>
-    
+
 	<!-- fix versions of dependencies -->
 	<dependencyManagement>
 		<dependencies>

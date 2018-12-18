@@ -1,6 +1,6 @@
-package bdml.core.objects;
+package bdml.services.api.types;
 
-public class FilterObject {
+public class Filter {
 	public String id;
 	public String idFrom;
 	public String idTo;
