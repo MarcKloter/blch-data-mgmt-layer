@@ -1,24 +1,99 @@
 package bdml.core;
 
+import bdml.services.api.Core;
 import com.googlecode.jsonrpc4j.JsonRpcServer;
+import org.apache.commons.cli.*;
+
+import java.io.*;
+import java.net.URL;
+import java.net.URLDecoder;
+import java.time.Clock;
+
 import static spark.Spark.*;
 
 public class Starter {
-	public static void main(String[] args) {
-		CoreService coreService = new CoreServiceImpl();
-		JsonRpcServer jsonRpcServer = new JsonRpcServer(coreService);
-		
-		int port = 8545;
-		port(port);
-		
-		// TODO: Enable SSL (keystore file)
-		
-		// HTTPS POST routing
+    public static void main(String[] args) throws FileNotFoundException, IOException {
+        CommandLine cmd = handleCLIArguments(args);
+
+        Core coreService = new CoreImpl();
+        JsonRpcServer jsonRpcServer = new JsonRpcServer(coreService);
+
+        // optional port argument
+        int port = Integer.parseInt(cmd.getOptionValue("port", "8545"));
+
+        port(port);
+
+        // optional truststore arguments
+        String truststoreFile = cmd.getOptionValue("truststore", null);
+        String truststorePassword = cmd.getOptionValue("truststore-password", null);
+
+        // required keystore arguments
+        String keystoreFile = getLocation() + cmd.getOptionValue("keystore");
+        String keystorePassword = cmd.getOptionValue("password");
+
+        secure(keystoreFile, keystorePassword, truststoreFile, truststorePassword);
+
+        // TODO: invalid args cause ugly exception
+
+        // HTTPS POST routing
         post("/", (request, response) -> {
-        	jsonRpcServer.handle(request.raw(), response.raw());
-        	return response;
+            jsonRpcServer.handle(request.raw(), response.raw());
+            return response;
         });
-        
-		System.out.println("JSON-RPC API endpoint listening on https://localhost:" + port);
-	}
+
+        System.out.println("JSON-RPC API endpoint listening on https://localhost:" + port);
+    }
+
+    /**
+     * Configures Apache Commons CLI for this project and parses the supplied arguments.
+     *
+     * @param args Command line arguments.
+     * @return Parsed command line arguments.
+     */
+    private static CommandLine handleCLIArguments(String[] args) {
+        Options options = new Options();
+
+        // optional argument port
+        options.addOption(null,"port", true, "Port to listen to. Default: 8545.");
+
+        // mandatory argument keystore
+        options.addRequiredOption("k","keystore", true, "Keystore containing key material for the SSL socket to use.");
+
+        // mandatory argument password
+        options.addRequiredOption("p", "password", true, "The password to opten the keystore.");
+
+        // optional argument truststore
+        options.addOption(null,"truststore", true, "Truststore containing trust material for the SSL socket to base trust decisions on.");
+
+        // optional argument truststore-password
+        options.addOption(null,"truststore-password", true, "The password to open the truststore.");
+
+        CommandLineParser parser = new DefaultParser();
+        HelpFormatter formatter = new HelpFormatter();
+        CommandLine cmd = null;
+        try {
+            cmd = parser.parse(options, args);
+        } catch(ParseException e) {
+            System.out.println(e.getMessage());
+            formatter.printHelp("utility-name", options);
+            System.exit(1);
+        }
+
+        return cmd;
+    }
+
+    /**
+     * Returns the absolute path to the jar file.
+     * Evaluates to bdml.core/target/classes/ during development.
+     *
+     * @return String defining the absolute path to the directory in which the jar file resides or null in case of an error.
+     */
+    private static String getLocation() {
+        try {
+            String path = Starter.class.getProtectionDomain().getCodeSource().getLocation().getPath();
+            return URLDecoder.decode(path, "UTF-8");
+        } catch (Exception e) {
+            return null;
+        }
+    }
 }

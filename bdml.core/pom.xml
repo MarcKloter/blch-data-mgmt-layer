@@ -14,6 +14,10 @@
     <artifactId>bdml.core</artifactId>
     <packaging>jar</packaging>
 
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
     <build>
         <plugins>
             <plugin>
@@ -34,13 +38,15 @@
                             <outputDirectory>../target</outputDirectory>
                             <finalName>${project.parent.artifactId}-${project.parent.version}</finalName>
                             <filters>
-                                <!-- exclude manifest signature files -->
                                 <filter>
                                     <artifact>*:*</artifact>
                                     <excludes>
+                                        <!-- exclude manifest signature files -->
                                         <exclude>META-INF/*.SF</exclude>
                                         <exclude>META-INF/*.DSA</exclude>
                                         <exclude>META-INF/*.RSA</exclude>
+                                        <!-- exclude keystore files -->
+                                        <exclude>/*.jks</exclude>
                                     </excludes>
                                 </filter>
                             </filters>
@@ -131,6 +137,12 @@
             <groupId>javax.jws</groupId>
             <artifactId>javax.jws-api</artifactId>
             <version>1.1</version>
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/commons-cli/commons-cli -->
+        <dependency>
+            <groupId>commons-cli</groupId>
+            <artifactId>commons-cli</artifactId>
+            <version>1.4</version>
         </dependency>
     </dependencies>
 </project>
