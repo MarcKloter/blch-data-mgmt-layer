@@ -16,6 +16,7 @@
     <properties>
         <!-- skip tests as this is module contains only interfaces -->
         <maven.test.skip>true</maven.test.skip>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
     <build>

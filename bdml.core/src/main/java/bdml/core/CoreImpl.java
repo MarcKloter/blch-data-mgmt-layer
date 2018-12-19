@@ -7,11 +7,11 @@ import bdml.services.api.types.Filter;
 import bdml.services.api.types.Subject;
 import bdml.services.api.Core;
 
-public class CoreServiceImpl implements Core {
+public class CoreImpl implements Core {
 
 	@Override
 	public String storeData(String data, Account account, List<Subject> subjects, List<String> linking) {
-		// TODO:
+		// TODO Auto-generated method stub
 		return null;
 	}
 

@@ -3,21 +3,9 @@ package bdml.services;
 import java.security.Key;
 
 public interface CryptographicStore {
-	/**
-	 * 
-	 * @param cipher
-	 * @param key
-	 * @param plaintext
-	 * @return
-	 */
-	public String encrypt(String cipher, Key key, String plaintext);
+	// TODO: javadoc
 
-	/**
-	 * 
-	 * @param cipher
-	 * @param key
-	 * @param ciphertext
-	 * @return
-	 */
-	public String decrypt(String cipher, Key key, String ciphertext);
+	String encrypt(String cipher, Key key, String plaintext);
+
+	String decrypt(String cipher, Key key, String ciphertext);
 }

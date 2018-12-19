@@ -12,6 +12,7 @@
 	<properties>
 		<jdk.version>11</jdk.version>
 		<output.directory>../target/</output.directory>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 	</properties>
 
 	<modules>
