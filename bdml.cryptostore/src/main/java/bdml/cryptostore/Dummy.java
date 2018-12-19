@@ -13,6 +13,8 @@ public class Dummy {
 		KeyPair kp = generateKeyPair();
 		PublicKey pk = kp.getPublic();
 		System.out.println("Public Key: " + pk.toString());
+		System.out.println("PK size: " + pk.getEncoded().length);
+		System.out.println("Hex: " + Hex.toHexString(pk.getEncoded()));
 		String cap = "ee8e01eff7acd538e8f6e6deea1a971e1be920ee4ceb4419434315dac04ed736";
 //		String cap = "8e";
 		byte[] plaintext = Hex.decode(cap);

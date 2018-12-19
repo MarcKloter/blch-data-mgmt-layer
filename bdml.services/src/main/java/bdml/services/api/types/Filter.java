@@ -1,8 +1,8 @@
 package bdml.services.api.types;
 
 public class Filter {
-	public String id;
-	public String idFrom;
-	public String idTo;
+	public DataIdentifier id;
+	public DataIdentifier idFrom;
+	public DataIdentifier idTo;
 	public int limit;
 }
