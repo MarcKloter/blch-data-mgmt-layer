@@ -1,25 +1,22 @@
 package bdml.core;
 
-import bdml.services.api.Core;
-import com.googlecode.jsonrpc4j.JsonRpcServer;
+import bdml.core.jsonrpc.CoreProxy;
+import com.github.arteam.simplejsonrpc.server.JsonRpcServer;
 import org.apache.commons.cli.*;
 
 import java.io.*;
-import java.net.URL;
 import java.net.URLDecoder;
-import java.time.Clock;
 
 import static spark.Spark.*;
 
 public class Starter {
+    private final static String defaultPort = "8550";
+
     public static void main(String[] args) throws FileNotFoundException, IOException {
         CommandLine cmd = handleCLIArguments(args);
 
-        Core coreService = new CoreImpl();
-        JsonRpcServer jsonRpcServer = new JsonRpcServer(coreService);
-
         // optional port argument
-        int port = Integer.parseInt(cmd.getOptionValue("port", "8545"));
+        int port = Integer.parseInt(cmd.getOptionValue("port", defaultPort));
 
         port(port);
 
@@ -35,11 +32,17 @@ public class Starter {
 
         // TODO: invalid args cause ugly exception
 
+        CoreProxy coreService = new CoreProxy();
+        JsonRpcServer rpcServer = new JsonRpcServer();
+
         // HTTPS POST routing
         post("/", (request, response) -> {
-            jsonRpcServer.handle(request.raw(), response.raw());
-            return response;
+            String jsonRequest = request.body();
+            return rpcServer.handle(jsonRequest, coreService);
         });
+
+        // TODO: websocket endpoint
+        // TODO: HTTPS extension routing
 
         System.out.println("JSON-RPC API endpoint listening on https://localhost:" + port);
     }
@@ -54,7 +57,7 @@ public class Starter {
         Options options = new Options();
 
         // optional argument port
-        options.addOption(null,"port", true, "Port to listen to. Default: 8545.");
+        options.addOption(null,"port", true, String.format("Port to listen to. Default: %s.", defaultPort));
 
         // mandatory argument keystore
         options.addRequiredOption("k","keystore", true, "Keystore containing key material for the SSL socket to use.");
