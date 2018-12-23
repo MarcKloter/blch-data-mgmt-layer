@@ -7,35 +7,27 @@ import bdml.blockchain.parity.*;
 import bdml.services.Blockchain;
 
 public class BlockchainAdapter implements Blockchain {
-    private String uri;
+    private final String URI;
 
     public BlockchainAdapter() {
-        // mandatory non-arg constructor for the JPMS
-    }
-
-    /**
-     * Creates a new blockchain adpter to communicate with the connected blockchain.
-     *
-     * @param uri JSON-RPC API endpoint URI
-     */
-    public BlockchainAdapter(String uri) {
-        this.uri = uri;
+        // TODO: get blockchain URI from application.properties
+        this.URI = "http://localhost:8545";
     }
 
     /**
      * Creates a new account using personal_newAccount.
      *
-     * @param password password for the new account
      * @return 20 Bytes identifier of the new account.
      */
+    @Override
     public String createAccount(String password) {
         NewAccount request = new NewAccount(JsonRpc.getId(), password);
         try {
-            NewAccountResponse response = JsonRpc.send(uri, request, NewAccountResponse.class);
+            NewAccountResponse response = JsonRpc.send(URI, request, NewAccountResponse.class);
             return response.result;
         } catch (IOException e) {
             // TODO: Error Handling: wrap exception
-            throw new RuntimeException();
+            throw new RuntimeException(e.getMessage());
         }
     }
 
@@ -50,11 +42,11 @@ public class BlockchainAdapter implements Blockchain {
 
         GetTransactionByHashResponse response;
         try {
-            response = JsonRpc.send(uri, request, GetTransactionByHashResponse.class);
+            response = JsonRpc.send(URI, request, GetTransactionByHashResponse.class);
         } catch (IOException e) {
             System.out.println(e.getMessage());
             // TODO: Error Handling: wrap exception
-            throw new RuntimeException();
+            throw new RuntimeException(e.getMessage());
         }
 
         if (response.result == null)

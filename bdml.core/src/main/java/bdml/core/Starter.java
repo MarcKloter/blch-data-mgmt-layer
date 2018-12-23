@@ -10,13 +10,13 @@ import java.net.URLDecoder;
 import static spark.Spark.*;
 
 public class Starter {
-    private final static String defaultPort = "8550";
+    private final static String DEFAULT_PORT = "8550";
 
     public static void main(String[] args) throws FileNotFoundException, IOException {
         CommandLine cmd = handleCLIArguments(args);
 
         // optional port argument
-        int port = Integer.parseInt(cmd.getOptionValue("port", defaultPort));
+        int port = Integer.parseInt(cmd.getOptionValue("port", DEFAULT_PORT));
 
         port(port);
 
@@ -57,7 +57,7 @@ public class Starter {
         Options options = new Options();
 
         // optional argument port
-        options.addOption(null,"port", true, String.format("Port to listen to. Default: %s.", defaultPort));
+        options.addOption(null,"port", true, String.format("Port to listen to. Default: %s.", DEFAULT_PORT));
 
         // mandatory argument keystore
         options.addRequiredOption("k","keystore", true, "Keystore containing key material for the SSL socket to use.");

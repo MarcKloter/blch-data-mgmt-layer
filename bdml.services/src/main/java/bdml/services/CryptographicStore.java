@@ -1,11 +1,38 @@
 package bdml.services;
 
-import java.security.Key;
+import java.security.PublicKey;
 
 public interface CryptographicStore {
 	// TODO: javadoc
 
-	String encrypt(String cipher, Key key, String plaintext);
+	/**
+	 * Generates a public/private key pair secured by the provided secret.
+	 * Future operations requiring the private key will require to provide this secret.
+	 * The algorithm used must be defined by the implementation.
+	 *
+	 * @param secret
+	 * @return
+	 */
+	PublicKey generateKeyPair(String secret);
 
-	String decrypt(String cipher, Key key, String ciphertext);
+	/**
+	 *
+	 * The cipher used must be defined by the implementation.
+	 *
+	 * @param key
+	 * @param plaintext
+	 * @return
+	 */
+	String encrypt(PublicKey key, String plaintext);
+
+	/**
+	 *
+	 * The cipher used must be defined by the implementation.
+	 *
+	 * @param key
+	 * @param secret
+	 * @param ciphertext
+	 * @return
+	 */
+	String decrypt(PublicKey key, String secret, String ciphertext);
 }

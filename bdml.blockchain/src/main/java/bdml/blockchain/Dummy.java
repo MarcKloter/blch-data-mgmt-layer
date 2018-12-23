@@ -15,7 +15,7 @@ public class Dummy {
 		String uri = "http://localhost:8545";
 		String password = "myPassword";
 		
-		BlockchainAdapter bca = new BlockchainAdapter(uri);
+		BlockchainAdapter bca = new BlockchainAdapter();
 		
 		String address = bca.createAccount(password);
 		System.out.println("Account created: " + address);

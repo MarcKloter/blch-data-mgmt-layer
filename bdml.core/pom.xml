@@ -88,7 +88,7 @@
         </dependency>
         <dependency>
             <groupId>bdml</groupId>
-            <artifactId>bdml.keystore</artifactId>
+            <artifactId>bdml.keyserver</artifactId>
             <version>1.0.0</version>
         </dependency>
         <dependency>

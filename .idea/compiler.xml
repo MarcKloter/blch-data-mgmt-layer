@@ -11,7 +11,7 @@
         <module name="bdml.core" />
         <module name="bdml.cryptostore" />
         <module name="bdml.ipfs" />
-        <module name="bdml.keystore" />
+        <module name="bdml.keyserver" />
         <module name="bdml.services" />
       </profile>
     </annotationProcessing>
