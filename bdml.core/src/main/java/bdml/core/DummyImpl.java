@@ -9,7 +9,7 @@ public class DummyImpl {
 	public static void main(String[] args) {
 		//Cache cache = new CacheImpl();
 		Core core = new CoreImpl();
-		core.createAccount("myPassword");
+		System.out.println(core.createAccount("myPassword"));
 	}
 
 }

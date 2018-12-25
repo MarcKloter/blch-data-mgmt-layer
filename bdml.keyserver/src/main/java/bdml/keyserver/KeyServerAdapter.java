@@ -1,27 +1,25 @@
 package bdml.keyserver;
 
-import bdml.keyserver.persistence.IdentifiablePublicKey;
+import bdml.keyserver.persistence.Subject;
 import bdml.services.KeyServer;
 import bdml.services.exceptions.MisconfigurationException;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.type.CollectionType;
 
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.security.PublicKey;
-import java.util.ArrayList;
-import java.util.IdentityHashMap;
-import java.util.List;
-
-import static org.bouncycastle.util.encoders.Hex.toHexString;
+import java.util.Base64;
+import java.util.HashMap;
+import java.util.Map;
 
 public class KeyServerAdapter implements KeyServer {
-    private final String FILENAME = "registeredKey.json";
+    private final String FILENAME = "registeredKeys.json";
 
-    private List<IdentifiablePublicKey> registeredKeys;
+    private Map<String, Subject> registeredKeys;
 
     public KeyServerAdapter() {
         // load previously generated key pairs
@@ -30,20 +28,20 @@ public class KeyServerAdapter implements KeyServer {
         if(file.exists()) {
             try {
                     JsonParser jsonParser = new JsonFactory().createParser(file);
-                    CollectionType valueType = mapper.getTypeFactory().constructCollectionType(List.class, IdentifiablePublicKey.class);
+                    JavaType valueType = mapper.getTypeFactory().constructParametricType(Map.class, String.class, Subject.class);
                     this.registeredKeys = mapper.readValue(jsonParser, valueType);
             } catch (IOException e) {
                 throw new MisconfigurationException(e.getMessage());
             }
         } else {
-            this.registeredKeys = new ArrayList<>();
+            this.registeredKeys = new HashMap<>();
         }
     }
 
     @Override
     public void registerKey(String identifier, PublicKey key) {
-        String publicKey = toHexString(key.getEncoded());
-        this.registeredKeys.add(new IdentifiablePublicKey(identifier, publicKey));
+        String publicKey = Base64.getEncoder().encodeToString(key.getEncoded());
+        this.registeredKeys.put(identifier, new Subject(identifier, publicKey, "test description"));
 
         ObjectMapper mapper = new ObjectMapper();
         try {
@@ -51,5 +49,14 @@ public class KeyServerAdapter implements KeyServer {
         } catch (IOException e) {
             throw new MisconfigurationException(e.getMessage());
         }
+    }
+
+    @Override
+    public PublicKey queryKey(String identifier) {
+        if(identifier == null)
+            return null;
+
+        Subject subject = registeredKeys.get(identifier);
+        return (subject != null) ? KeyDecoder.decodePublicKey(subject.getPublicKey()) : null;
     }
 }

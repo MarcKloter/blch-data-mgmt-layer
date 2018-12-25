@@ -5,7 +5,6 @@ import bdml.core.jsonrpc.exceptions.AuthenticationExceptionWrapper;
 import bdml.core.jsonrpc.exceptions.InvalidParamsException;
 import bdml.core.jsonrpc.types.AccountWrapper;
 import bdml.core.jsonrpc.types.FilterWrapper;
-import bdml.core.jsonrpc.types.SubjectWrapper;
 import bdml.services.api.Core;
 import bdml.services.api.exceptions.AuthenticationException;
 import com.github.arteam.simplejsonrpc.core.annotation.JsonRpcMethod;
@@ -14,8 +13,6 @@ import com.github.arteam.simplejsonrpc.core.annotation.JsonRpcParam;
 import com.github.arteam.simplejsonrpc.core.annotation.JsonRpcService;
 
 import java.util.List;
-import java.util.Objects;
-import java.util.stream.Collectors;
 
 @JsonRpcService
 public class CoreProxy {
@@ -57,11 +54,8 @@ public class CoreProxy {
     }
 
     @JsonRpcMethod
-    public List<SubjectWrapper> listSubjects() {
-        return core.listSubjects().stream()
-                .filter(Objects::nonNull)
-                .map(e -> new SubjectWrapper(e.getAddress(), e.getDescription()))
-                .collect(Collectors.toList());
+    public List<String> listSubjects() {
+        return core.listSubjects();
     }
 
     @JsonRpcMethod

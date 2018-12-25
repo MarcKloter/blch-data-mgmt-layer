@@ -10,18 +10,27 @@ public interface CryptographicStore {
 	 * Future operations requiring the private key will require to provide this secret.
 	 * The algorithm used must be defined by the implementation.
 	 *
-	 * @param secret
-	 * @return
+	 * @param secret password to the key pair
+	 * @return Public key of the generated key pair.
 	 */
 	PublicKey generateKeyPair(String secret);
+
+	/**
+	 * Checks whether there is a private key for the given public key secured by the provided secret.
+	 *
+	 * @param publicKey public key to check
+	 * @param secret password to the given public key
+	 * @return Boolean whether the combination of public key and secret exist.
+	 */
+	boolean checkKeyPair(PublicKey publicKey, String secret);
 
 	/**
 	 *
 	 * The cipher used must be defined by the implementation.
 	 *
-	 * @param key
-	 * @param plaintext
-	 * @return
+	 * @param key TODO
+	 * @param plaintext TODO
+	 * @return TODO
 	 */
 	String encrypt(PublicKey key, String plaintext);
 
@@ -29,10 +38,10 @@ public interface CryptographicStore {
 	 *
 	 * The cipher used must be defined by the implementation.
 	 *
-	 * @param key
-	 * @param secret
-	 * @param ciphertext
-	 * @return
+	 * @param key TODO
+	 * @param secret TODO
+	 * @param ciphertext TODO
+	 * @return TODO
 	 */
 	String decrypt(PublicKey key, String secret, String ciphertext);
 }
