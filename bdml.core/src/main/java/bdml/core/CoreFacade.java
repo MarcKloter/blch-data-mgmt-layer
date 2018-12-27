@@ -8,10 +8,12 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 import bdml.blockchain.BlockchainAdapter;
+import bdml.cache.CacheImpl;
 import bdml.core.util.Assert;
 import bdml.cryptostore.CryptoStoreAdapter;
 import bdml.keyserver.KeyServerAdapter;
 import bdml.services.Blockchain;
+import bdml.services.Cache;
 import bdml.services.CryptographicStore;
 import bdml.services.KeyServer;
 import bdml.services.api.exceptions.AuthenticationException;
@@ -24,6 +26,7 @@ public class CoreImpl implements Core {
 	private Blockchain blockchain = new BlockchainAdapter();
 	private KeyServer keyServer = new KeyServerAdapter();
 	private CryptographicStore cryptoStore = new CryptoStoreAdapter();
+	private Cache cache = new CacheImpl();
 
 	@Override
 	public String storeData(String data, Account account, List<String> subjects, List<String> linking) throws AuthenticationException {
@@ -49,6 +52,17 @@ public class CoreImpl implements Core {
 		if(resolvedSubjects.isEmpty()) {
 			// TODO: handle invalid subjects
 		}
+
+		List<byte[]> resolvedLinking = linking.stream()
+				.map(l -> Hex.decode(l)) // decode data identifiers
+				.map(id -> {
+					// check whether the capability to be included is cached
+					byte[] capability = cache.get(account, id);
+					return capability != null ? capability : blockchain.get();
+				})
+				.collect(Collectors.toList());
+
+		// TODO: throw exception if blockchain returns null (id is not readable)
 
 
 		// TODO: resolve identifiers (cache ID to capability)
