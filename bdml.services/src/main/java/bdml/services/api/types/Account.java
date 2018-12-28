@@ -3,20 +3,20 @@ package bdml.services.api.types;
 public class Account {
     // TODO: validate structure
 
-    private String address;
+    private String identifier;
     private String password;
 
-    public Account(String address, String password) {
-        this.address = address;
+    public Account(String identifier, String password) {
+        this.identifier = identifier;
         this.password = password;
     }
 
-    public String getAddress() {
-        return address;
+    public String getIdentifier() {
+        return identifier;
     }
 
-    public void setAddress(String address) {
-        this.address = address;
+    public void setIdentifier(String identifier) {
+        this.identifier = identifier;
     }
 
     public String getPassword() {

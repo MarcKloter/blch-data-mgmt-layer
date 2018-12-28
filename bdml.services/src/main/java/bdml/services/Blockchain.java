@@ -1,14 +1,32 @@
 package bdml.services;
 
+import bdml.services.api.types.Account;
+import bdml.services.types.StorageObject;
+
 public interface Blockchain {
     // TODO: javadoc
 
     /**
-     * Creates an account (eg. pair of public and private key) to use within the connected blockchain.
-     * An account can be used by providing the returned identifier together with the correct secret.
+     * Creates an entity (eg. pair of public and private key) to use within the connected blockchain.
+     * An entity can be used by providing the id and secret used for creation.
      *
-     * @param secret secret to tie to the created account for future use
-     * @return String representation of the identifier for the created account.
+     * @param account account to tie to the entity for future use
      */
-    String createAccount(String secret);
+    void createEntity(Account account);
+
+    /**
+     * Creates a transaction containing the given payload on the connected blockchain.
+     *
+     * @param account account tied to the entity to use
+     * @param payload object containing the data to store in a transaction
+     */
+    void createTransaction(Account account, StorageObject payload);
+
+    /**
+     * Returns previously stored data by an identifier of the storage object.
+     *
+     * @param identifier unique identifier of previously stored data
+     * @return The requested data or null if none was found.
+     */
+    StorageObject getTransaction(byte[] identifier);
 }

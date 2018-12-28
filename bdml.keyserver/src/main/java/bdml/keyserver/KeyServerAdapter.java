@@ -17,7 +17,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class KeyServerAdapter implements KeyServer {
-    private final String FILENAME = "registeredKeys.json";
+    private final String FILENAME = "keyPairMap.json";
 
     private Map<String, Subject> registeredKeys;
 
@@ -41,7 +41,7 @@ public class KeyServerAdapter implements KeyServer {
     @Override
     public void registerKey(String identifier, PublicKey key) {
         String publicKey = Base64.getEncoder().encodeToString(key.getEncoded());
-        this.registeredKeys.put(identifier, new Subject(identifier, publicKey, "test description"));
+        this.registeredKeys.put(identifier, new Subject(identifier, publicKey));
 
         ObjectMapper mapper = new ObjectMapper();
         try {

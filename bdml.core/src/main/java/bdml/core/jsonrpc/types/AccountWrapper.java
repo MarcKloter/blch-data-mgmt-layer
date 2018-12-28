@@ -8,9 +8,9 @@ public class AccountWrapper {
     private Account account;
 
     @JsonCreator
-    public AccountWrapper(@JsonProperty("address") String address,
+    public AccountWrapper(@JsonProperty("identifier") String identifier,
                           @JsonProperty("password") String password) {
-        this.account = new Account(address, password);
+        this.account = new Account(identifier, password);
     }
 
     public Account unwrap() {
