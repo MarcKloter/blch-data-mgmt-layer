@@ -1,7 +1,6 @@
 package bdml.services;
 
 import bdml.services.api.types.Account;
-import bdml.services.types.StorageObject;
 
 public interface Blockchain {
     // TODO: javadoc
@@ -18,15 +17,16 @@ public interface Blockchain {
      * Creates a transaction containing the given payload on the connected blockchain.
      *
      * @param account account tied to the entity to use
-     * @param payload object containing the data to store in a transaction
+     * @param identifier identifier to store the data under
+     * @param payload data to store in a transaction
      */
-    void createTransaction(Account account, StorageObject payload);
+    void createTransaction(Account account, byte[] identifier, byte[] payload);
 
     /**
-     * Returns previously stored data by an identifier of the storage object.
+     * Returns previously stored data by an identifier.
      *
      * @param identifier unique identifier of previously stored data
      * @return The requested data or null if none was found.
      */
-    StorageObject getTransaction(byte[] identifier);
+    byte[] getTransaction(byte[] identifier);
 }

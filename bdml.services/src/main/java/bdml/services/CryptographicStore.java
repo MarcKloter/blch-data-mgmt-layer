@@ -32,7 +32,7 @@ public interface CryptographicStore {
 	 * @param plaintext TODO
 	 * @return TODO
 	 */
-	String encrypt(PublicKey key, String plaintext);
+	byte[] encrypt(PublicKey key, byte[] plaintext);
 
 	/**
 	 *
@@ -43,5 +43,5 @@ public interface CryptographicStore {
 	 * @param ciphertext TODO
 	 * @return TODO
 	 */
-	String decrypt(PublicKey key, String secret, String ciphertext);
+	byte[] decrypt(PublicKey key, String secret, byte[] ciphertext);
 }

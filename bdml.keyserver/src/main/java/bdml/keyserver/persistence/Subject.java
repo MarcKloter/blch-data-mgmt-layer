@@ -19,9 +19,7 @@ public class Subject {
         this.metadata = metadata;
     }
 
-    @JsonCreator
-    public Subject(@JsonProperty("identifier") String identifier,
-                   @JsonProperty("publicKey") String publicKey) {
+    public Subject(String identifier, String publicKey) {
         this.identifier = identifier;
         this.publicKey = publicKey;
         this.metadata = null;

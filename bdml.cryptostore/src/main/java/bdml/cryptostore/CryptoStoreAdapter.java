@@ -1,45 +1,37 @@
 package bdml.cryptostore;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
 import java.security.*;
 import java.security.spec.ECGenParameterSpec;
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.List;
+import java.security.spec.ECPrivateKeySpec;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.X509EncodedKeySpec;
+import java.util.Arrays;
 
+import bdml.cryptostore.persistence.KeyPairList;
 import bdml.cryptostore.persistence.SecuredKeyPair;
 import bdml.services.CryptographicStore;
 import bdml.services.exceptions.MisconfigurationException;
-import com.fasterxml.jackson.core.JsonFactory;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.type.CollectionType;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.bouncycastle.jce.spec.IESParameterSpec;
+import org.bouncycastle.util.encoders.Hex;
+
+import javax.crypto.Cipher;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
 
 public class CryptoStoreAdapter implements CryptographicStore {
-    // TODO: load KEY_GEN_ALG, EC_CURVE and FILENAME from configuration file
+    // TODO: load KEY_GEN_ALG and EC_CURVE from configuration file
     private final String KEY_GEN_ALG = "EC";
-    private final String EC_CURVE = "secp256k1";
-    private final String FILENAME = "keyPairs.json";
+    private final String ASYMMETRIC_CIPHER = "ECIESwithAES-CBC";
+    //private final String EC_CURVE = "secp256k1";
+    private final String EC_CURVE = "secp521r1";
+    //private final String EC_CURVE = "secp384r1";
 
-    private List<SecuredKeyPair> keyPairs;
+    private KeyPairList keyPairs;
 
     public CryptoStoreAdapter() {
-        // load previously generated key pairs
-        ObjectMapper mapper = new ObjectMapper();
-        File file = new File(FILENAME);
-        if (file.exists()) {
-            try {
-                JsonParser jsonParser = new JsonFactory().createParser(file);
-                CollectionType valueType = mapper.getTypeFactory().constructCollectionType(List.class, SecuredKeyPair.class);
-                this.keyPairs = mapper.readValue(jsonParser, valueType);
-            } catch (IOException e) {
-                throw new MisconfigurationException(e.getMessage());
-            }
-        } else {
-            this.keyPairs = new ArrayList<>();
-        }
+        this.keyPairs = new KeyPairList();
     }
 
     @Override
@@ -52,65 +44,73 @@ public class CryptoStoreAdapter implements CryptographicStore {
             throw new MisconfigurationException(e.getMessage());
         }
 
-        if (KEY_GEN_ALG.equals("EC")) {
-            ECGenParameterSpec spec = new ECGenParameterSpec(EC_CURVE);
-            try {
-                gen.initialize(spec);
-            } catch (InvalidAlgorithmParameterException e) {
-                throw new MisconfigurationException(e.getMessage());
-            }
+        // set the curve for ECC
+        ECGenParameterSpec spec = new ECGenParameterSpec(EC_CURVE);
+        try {
+            gen.initialize(spec);
+        } catch (InvalidAlgorithmParameterException e) {
+            throw new MisconfigurationException(e.getMessage());
         }
         KeyPair keyPair = gen.generateKeyPair();
 
         // persist generated key pair
-        String publicKey = Base64.getEncoder().encodeToString(keyPair.getPublic().getEncoded());
-        String privateKey = Base64.getEncoder().encodeToString(keyPair.getPrivate().getEncoded());
-        String passwordHash = Util.sha256(secret);
-        this.keyPairs.add(new SecuredKeyPair(publicKey, privateKey, passwordHash));
-
-        ObjectMapper mapper = new ObjectMapper();
-        try {
-            mapper.writeValue(new FileWriter(FILENAME, false), keyPairs);
-        } catch (IOException e) {
-            throw new MisconfigurationException(e.getMessage());
-        }
+        this.keyPairs.add(keyPair, secret);
 
         return keyPair.getPublic();
     }
 
     @Override
     public boolean checkKeyPair(PublicKey key, String secret) {
-        return get(key, secret) != null;
+        return keyPairs.get(key, secret) != null;
     }
 
     @Override
-    public String encrypt(PublicKey key, String plaintext) {
-        // ECIESwithAES
-        return null;
+    public byte[] encrypt(PublicKey key, byte[] plaintext) {
+        Security.addProvider(new BouncyCastleProvider());
+
+        // generate nonce and enable EC point compression
+        byte[] nonce = new byte[16];
+        new SecureRandom().nextBytes(nonce);
+        IESParameterSpec params = new IESParameterSpec(null, null, 256, 256, nonce, true);
+
+        // encrypt plaintext using the configured cipher
+        try {
+            Cipher iesCipher = Cipher.getInstance(ASYMMETRIC_CIPHER, "BC");
+            iesCipher.init(Cipher.ENCRYPT_MODE, key, params);
+
+            // format: 0x02/0x03 || coordinate x || (PKCS5 padded) ciphertext || 20 bytes HMAC-digest || 16 bytes nonce
+            return Util.concat(iesCipher.doFinal(plaintext), nonce);
+        } catch (GeneralSecurityException e) {
+            throw new MisconfigurationException(e.getMessage());
+        }
     }
 
     @Override
-    public String decrypt(PublicKey key, String secret, String ciphertext) {
-        // ECIESwithAES
-        return null;
-    }
+    public byte[] decrypt(PublicKey publicKey, String secret, byte[] ciphertext) {
+        Security.addProvider(new BouncyCastleProvider());
 
-    /**
-     * Searches the list of key pairs for a given public key secured by the provided secret.
-     *
-     * @param key    public key to look for
-     * @param secret password to the given public key
-     * @return Public key if the combination was found or null.
-     */
-    private SecuredKeyPair get(PublicKey key, String secret) {
-        if (key == null || secret == null)
-            return null;
+        // get private key persisted for the given public key and secret combination
+        byte[] decodedKey = keyPairs.get(publicKey, secret);
 
-        String encodedKey = Base64.getEncoder().encodeToString(key.getEncoded());
-        String passwordHash = Util.sha256(secret);
-        return keyPairs.stream()
-                .filter(o -> o.getPublicKey().equals(encodedKey) && o.getPasswordHash().equals(passwordHash))
-                .findFirst()
-                .orElse(null);
+        // split ciphertext into ciphertext and nonce
+        int index = ciphertext.length - 16;
+        byte[] nonce = Arrays.copyOfRange(ciphertext, index, ciphertext.length);
+        ciphertext = Arrays.copyOf(ciphertext, index);
+        IESParameterSpec params = new IESParameterSpec(null, null, 256, 256, nonce, true);
+
+        try {
+            // reconstruct the encoded X.509 formatted private key from bytes
+            PKCS8EncodedKeySpec x509KeySpec = new PKCS8EncodedKeySpec(decodedKey);
+            KeyFactory keyFactory = KeyFactory.getInstance(KEY_GEN_ALG);
+            PrivateKey privateKey = keyFactory.generatePrivate(x509KeySpec);
+
+            // decrypt given ciphertext
+            Cipher iesCipher = Cipher.getInstance(ASYMMETRIC_CIPHER, "BC");
+            iesCipher.init(Cipher.DECRYPT_MODE, privateKey, params);
+
+            return iesCipher.doFinal(ciphertext);
+        } catch (GeneralSecurityException e) {
+            throw new MisconfigurationException(e.getMessage());
+        }
     }
 }

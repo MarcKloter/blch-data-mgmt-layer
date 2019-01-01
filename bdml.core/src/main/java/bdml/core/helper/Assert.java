@@ -1,4 +1,4 @@
-package bdml.core.util;
+package bdml.core.helper;
 
 import java.util.Collection;
 import java.util.Objects;

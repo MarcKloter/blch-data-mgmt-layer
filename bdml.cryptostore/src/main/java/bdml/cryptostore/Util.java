@@ -23,4 +23,15 @@ public class Util {
         byte[] messageDigest = digest.digest(messageBytes);
         return Base64.getEncoder().encodeToString(messageDigest);
     }
+
+    /**
+     * Concatenate two byte arrays.
+     * https://stackoverflow.com/a/5513188/4382892
+     */
+    public static byte[] concat(byte[] a, byte[] b) {
+        byte[] c = new byte[a.length + b.length];
+        System.arraycopy(a, 0, c, 0, a.length);
+        System.arraycopy(b, 0, c, a.length, b.length);
+        return c;
+    }
 }

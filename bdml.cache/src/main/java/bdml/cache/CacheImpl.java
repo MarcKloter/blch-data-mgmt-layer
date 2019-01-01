@@ -50,7 +50,7 @@ public class CacheImpl implements Cache {
     }
 
     private Connection connect(Account account) {
-        String db = account.getAddress();
+        String db = account.getIdentifier();
         String pwd = account.getPassword();
 
         // combination of file password (used for encryption) and user password
@@ -67,8 +67,9 @@ public class CacheImpl implements Cache {
 
     private Connection createCache(String db, String password) {
         String url = String.format("jdbc:h2:./%s;CIPHER=%s;IFEXISTS=FALSE", db, CIPHER);
-        try (Connection conn = DriverManager.getConnection(url, db, password);
-             Statement stmt = conn.createStatement()) {
+        try {
+            Connection conn = DriverManager.getConnection(url, db, password);
+            Statement stmt = conn.createStatement();
             stmt.execute("CREATE TABLE CAPABILITIES(id BINARY(32) primary key, capability BINARY(32))");
             return conn;
         } catch (SQLException e) {

@@ -1,25 +1,39 @@
-package bdml.core.util;
+package bdml.core.helper;
 
 import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
 import java.security.Security;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Objects;
 
 import bdml.services.exceptions.MisconfigurationException;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.util.encoders.Hex;
 
+import javax.crypto.Cipher;
+import javax.crypto.spec.SecretKeySpec;
+
 public class Crypto {
     private static MessageDigest digest;
 
+    // TODO: load application.properties config
+    private static final String HASH_FUNCTION = "SHA-256";
+    private static final String SYMMETRIC_ALGORITHM = "AES";
+    private static final String SYMMETRIC_CIPHER = "AES/CBC/PKCS7Padding";
+
     static {
-        // TODO: load application.properties hash algorithm configuration
-        String hashAlgorithm = "SHA-256";
         Security.addProvider(new BouncyCastleProvider());
         try {
-            digest = MessageDigest.getInstance(hashAlgorithm, "BC");
+            digest = MessageDigest.getInstance(HASH_FUNCTION, "BC");
+        } catch (GeneralSecurityException e) {
+            throw new MisconfigurationException(e.getMessage());
+        }
+    }
+
+    public static byte[] symmetricallyEncrypt(byte[] capability, byte[] plaintext) {
+        SecretKeySpec key = new SecretKeySpec(capability, SYMMETRIC_ALGORITHM);
+        try {
+            Cipher cipher = Cipher.getInstance(SYMMETRIC_CIPHER, "BC");
+            cipher.init(Cipher.ENCRYPT_MODE, key);
+            return cipher.doFinal(plaintext);
         } catch (GeneralSecurityException e) {
             throw new MisconfigurationException(e.getMessage());
         }

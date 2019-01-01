@@ -1,6 +1,6 @@
 package bdml.core.jsonrpc;
 
-import bdml.core.CoreImpl;
+import bdml.core.CoreService;
 import bdml.core.jsonrpc.exceptions.AuthenticationExceptionWrapper;
 import bdml.core.jsonrpc.exceptions.InvalidParamsException;
 import bdml.core.jsonrpc.types.AccountWrapper;
@@ -16,7 +16,7 @@ import java.util.List;
 
 @JsonRpcService
 public class CoreProxy {
-    private Core core = new CoreImpl();
+    private Core core = new CoreService();
 
     @JsonRpcMethod
     public String storeData(@JsonRpcParam("data") String data,

@@ -7,10 +7,12 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.CollectionType;
 
+import javax.crypto.spec.SecretKeySpec;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.security.KeyPair;
+import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -62,20 +64,24 @@ public class KeyPairList {
 
     /**
      * Searches the list of key pairs for a given public key secured by the provided secret.
+     * Returns the private key of the found key pair.
      *
      * @param key    public key to look for
      * @param secret password to the given public key
-     * @return Public key if the combination was found or null.
+     * @return Bytes of private key corresponding to the given public key/secret combination.
      */
-    public SecuredKeyPair get(PublicKey key, String secret) {
+    public byte[] get(PublicKey key, String secret) {
         if (key == null || secret == null)
             return null;
 
         String encodedKey = Base64.getEncoder().encodeToString(key.getEncoded());
         String passwordHash = Util.sha256(secret);
-        return keyPairs.stream()
+
+        SecuredKeyPair securedKeyPair = keyPairs.stream()
                 .filter(o -> o.getPublicKey().equals(encodedKey) && o.getPasswordHash().equals(passwordHash))
                 .findFirst()
                 .orElse(null);
+
+        return Base64.getDecoder().decode(securedKeyPair.getPrivateKey());
     }
 }
