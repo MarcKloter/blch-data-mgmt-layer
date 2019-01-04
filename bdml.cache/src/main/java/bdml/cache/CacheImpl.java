@@ -70,7 +70,7 @@ public class CacheImpl implements Cache {
         try {
             Connection conn = DriverManager.getConnection(url, db, password);
             Statement stmt = conn.createStatement();
-            stmt.execute("CREATE TABLE CAPABILITIES(id BINARY(32) primary key, capability BINARY(32))");
+            stmt.execute("CREATE TABLE CAPABILITIES(id BINARY(32) primary key, capability BINARY(32) NOT NULL)");
             return conn;
         } catch (SQLException e) {
             throw new MisconfigurationException(e.getMessage());

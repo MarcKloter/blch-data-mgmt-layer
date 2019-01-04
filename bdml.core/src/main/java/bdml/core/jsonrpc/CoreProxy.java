@@ -4,6 +4,7 @@ import bdml.core.CoreService;
 import bdml.core.jsonrpc.exceptions.AuthenticationExceptionWrapper;
 import bdml.core.jsonrpc.exceptions.InvalidParamsException;
 import bdml.core.jsonrpc.types.AccountWrapper;
+import bdml.core.jsonrpc.types.DataSkeleton;
 import bdml.core.jsonrpc.types.FilterWrapper;
 import bdml.services.api.Core;
 import bdml.services.api.exceptions.AuthenticationException;
@@ -20,12 +21,12 @@ public class CoreProxy {
 
     @JsonRpcMethod
     public String storeData(@JsonRpcParam("data") String data,
+                            @JsonRpcParam("attachments") @JsonRpcOptional List<String> attachments,
                             @JsonRpcParam("account") AccountWrapper account,
-                            @JsonRpcParam("subjects") List<String> subjects,
-                            @JsonRpcParam("linking") @JsonRpcOptional List<String> linking) {
+                            @JsonRpcParam("subjects") List<String> subjects) {
         // TODO: write additional message to data object, currently overwriting the message field
         try {
-            return core.storeData(data, account.unwrap(), subjects, linking);
+            return core.storeData(data, attachments, account.unwrap(), subjects);
         } catch (IllegalArgumentException e) {
             throw new InvalidParamsException(e.getMessage());
         } catch (AuthenticationException e) {
@@ -44,10 +45,10 @@ public class CoreProxy {
     }
 
     @JsonRpcMethod
-    public String getData(@JsonRpcParam("id") String id,
-                          @JsonRpcParam("account") AccountWrapper account) {
+    public DataSkeleton getData(@JsonRpcParam("id") String id,
+                                @JsonRpcParam("account") AccountWrapper account) {
         try {
-            return core.getData(id, account.unwrap());
+            return new DataSkeleton(core.getData(id, account.unwrap()));
         } catch (AuthenticationException e) {
             throw new AuthenticationExceptionWrapper();
         }

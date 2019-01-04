@@ -1,8 +1,6 @@
 package bdml.services.api.types;
 
 public class Account {
-    // TODO: validate structure
-
     private String identifier;
     private String password;
 
