@@ -1,15 +1,14 @@
 package bdml.core;
 
-import java.io.ByteArrayOutputStream;
 import java.security.PublicKey;
 import java.util.*;
+import java.util.List;
 import java.util.stream.Collectors;
 
 import bdml.blockchain.BlockchainFacade;
 import bdml.cache.CacheImpl;
-import bdml.core.helper.Assert;
-import bdml.core.helper.Crypto;
-import bdml.core.helper.StorageObject;
+import bdml.core.helper.*;
+import bdml.core.proto.FrameOuterClass;
 import bdml.cryptostore.CryptoStoreAdapter;
 import bdml.keyserver.KeyServerAdapter;
 import bdml.services.Blockchain;
@@ -19,63 +18,154 @@ import bdml.services.KeyServer;
 import bdml.services.api.exceptions.AuthenticationException;
 import bdml.services.api.exceptions.NotAuthorizedException;
 import bdml.services.api.types.Account;
+import bdml.services.api.types.Data;
 import bdml.services.api.types.Filter;
 import bdml.services.api.Core;
 import org.bouncycastle.util.encoders.Hex;
 
 public class CoreService implements Core {
     // TODO: load constants from configuration file
-    private final byte VERSION = 1;
+    private final int VERSION = 1;
 
     private Blockchain blockchain = new BlockchainFacade();
     private KeyServer keyServer = new KeyServerAdapter();
     private CryptographicStore cryptoStore = new CryptoStoreAdapter();
     private Cache cache = new CacheImpl();
 
+    //region Core interface implementation
+    //------------------------------------------------------------------------------------------------------------------
+
     @Override
-    public String storeData(String data, Account account, List<String> subjects, List<String> attachments) throws AuthenticationException {
-        // validate input
+    public String storeData(String data, List<String> attachments, Account account, List<String> subjects) throws AuthenticationException {
         Assert.requireNonEmpty(data, "data");
+
+        // check provided account
+        KnownAccount caller = checkAccount(account);
+
+        // resolve subjects to public keys that will be able to read the data
+        Set<PublicKey> recipients = resolveAllSubjects(subjects);
+
+        // add owner as recipient
+        recipients.add(caller.getPublicKey());
+
+        // resolve data identifiers to capabilities using the given account (requires access to the data)
+        Set<byte[]> attachedCapabilities = resolveAllIdentifiers(caller, attachments);
+
+        // TODO: save data to IPFS
+
+        FrameWrapper frame = assembleFrame(data, recipients, attachedCapabilities);
+
+        // persist frame in blockchain
+        blockchain.createTransaction(account, frame.getIdentifier(), frame.getBytes());
+
+        // cache capability
+        cache.add(account, frame.getIdentifier(), frame.getCapability());
+
+        return Hex.toHexString(frame.getIdentifier());
+    }
+
+    @Override
+    public String storeData(Data data, Account account, List<String> subjects) throws AuthenticationException {
+        return storeData(data.getData(), data.getAttachments(), account, subjects);
+    }
+
+    @Override
+    public List<String> listData(Account account, Filter filter) throws AuthenticationException {
+        // check provided account
+        KnownAccount caller = checkAccount(account);
+
+        return null;
+    }
+
+    @Override
+    public Data getData(String identifier, Account account) throws AuthenticationException {
+        Assert.requireNonEmpty(identifier, "id");
+
+        // validate identifier format
+        byte[] idBytes = Hex.decode(identifier);
+        Assert.require32Bytes(idBytes);
+
+        // check provided account
+        KnownAccount caller = checkAccount(account);
+
+        // retrieve data frame from blockchain
+        byte[] frame = blockchain.getTransaction(idBytes);
+
+        FrameWrapper wrappedFrame = disassembleFrame(caller, Hex.decode(identifier), frame);
+
+        if (wrappedFrame == null)
+            return null;
+
+        return decryptPayload(wrappedFrame, account);
+    }
+
+    @Override
+    public List<String> listSubjects() {
+        // TODO: implement
+        List<String> result = new ArrayList<>();
+        // result.add(new Subject());
+        return result;
+    }
+
+    @Override
+    public String createAccount(String password) {
+        Assert.requireNonEmpty(password, "password");
+
+        // create key pair for the account
+        PublicKey publicKey = cryptoStore.generateKeyPair(password);
+
+        // take 160 LSB in hex representation as account identifier
+        byte[] pkBytes = publicKey.getEncoded();
+        byte[] idBytes = Arrays.copyOfRange(pkBytes, pkBytes.length - 20, pkBytes.length);
+        String identifier = Hex.toHexString(idBytes);
+
+        // pass created public key to the key server for distribution
+        keyServer.registerKey(identifier, publicKey);
+
+        // create an account on the blockchain tied to id and pwd
+        blockchain.createEntity(new Account(identifier, password));
+        // TODO: createEntity return the address to transfer coins (not dev chain) - what to do?
+
+        return identifier;
+    }
+
+    //------------------------------------------------------------------------------------------------------------------
+    //endregion
+
+    /**
+     * Checks whether the given account exists.
+     *
+     * @param account identifier and password combination
+     * @return Object containing the account with its public key.
+     * @throws AuthenticationException if the given identifier and password combination was wrong or does not exist.
+     */
+    private KnownAccount checkAccount(Account account) throws AuthenticationException {
         Assert.requireNonNull(account, "account");
 
         // check whether account exists
-        PublicKey ownerPK = keyServer.queryKey(account.getIdentifier());
+        PublicKey publicKey = keyServer.queryKey(account.getIdentifier());
 
         // check whether the resolved public key and given password correspond to an account
-        if (!cryptoStore.checkKeyPair(ownerPK, account.getPassword()))
+        if (!cryptoStore.checkKeyPair(publicKey, account.getPassword()))
             throw new AuthenticationException();
 
-        // resolve subjects to public keys that will be able to read the data
-        Set<PublicKey> recipients = new HashSet<>();
+        return new KnownAccount(account, publicKey);
+    }
+
+    /**
+     * Resolves the given addresses to public keys using the keyserver.
+     *
+     * @param subjects list of addresses
+     * @return Set of distinct public keys corresponding to the given subjects.
+     */
+    private Set<PublicKey> resolveAllSubjects(List<String> subjects) {
+        Set<PublicKey> resolvedSubjects = new HashSet<>();
         if (subjects != null)
             subjects.stream()
                     .distinct() // distinct to avoid unnecessary operations
                     .map(this::resolveSubject)
-                    .collect(Collectors.toCollection(() -> recipients));
-
-        // add owner as recipient
-        recipients.add(ownerPK);
-
-        // check whether all data (capabilities) to be attached exist and can be access by the given account
-        Set<byte[]> attachedCapabilities = new HashSet<>();
-        if (attachments != null)
-            attachments.stream()
-                    .distinct() // distinct to avoid unnecessary operations
-                    .map(Hex::decode) // decode data identifiers
-                    .map(id -> getCapability(account, id))
-                    .collect(Collectors.toCollection(() -> attachedCapabilities));
-
-        // TODO: (optional) save data to IPFS
-
-        StorageObject storageObject = assembleData(data.getBytes(), recipients, attachedCapabilities);
-
-        // persist data in blockchain
-        blockchain.createTransaction(account, storageObject.getIdentifier(), storageObject.getData());
-
-        // cache capability
-        cache.add(account, storageObject.getIdentifier(), storageObject.getCapability());
-
-        return Hex.toHexString(storageObject.getIdentifier());
+                    .collect(Collectors.toCollection(() -> resolvedSubjects));
+        return resolvedSubjects;
     }
 
     /**
@@ -94,160 +184,145 @@ public class CoreService implements Core {
         return pk;
     }
 
-    /**
-     * Resolves the given data identifier to the capability used to encrypt the associated data.
-     * The identifier is first being looked up in the cache and retrieved from the blockchain if not found.
-     *
-     * @param account    account to access the capability as
-     * @param identifier data identifier
-     * @return Capability as byte array.
-     * @throws IllegalArgumentException if there is no data linked to the given identifier
-     * @throws NotAuthorizedException   if the data linked to the given identifier could not be accessed by the provided account
-     */
-    private byte[] getCapability(Account account, byte[] identifier) {
-        // check whether the capability to be included is cached
-        byte[] capability = cache.get(account, identifier);
+    private Set<byte[]> resolveAllIdentifiers(KnownAccount account, Collection<String> identifiers) {
+        Set<byte[]> capabilities = new HashSet<>();
+        if (identifiers != null)
+            identifiers.stream()
+                    .distinct() // distinct to avoid unnecessary operations
+                    .map(id -> resolveIdentifier(account, id))
+                    .collect(Collectors.toCollection(() -> capabilities));
+        return capabilities;
+    }
 
-        // if the data is not present within the cache, retrieve it from the blockchain
+    private byte[] resolveIdentifier(KnownAccount account, String idHex) {
+        byte[] idBytes = Hex.decode(idHex);
+        Assert.require32Bytes(idBytes);
+
+        // check cache for capability
+        byte[] capability = cache.get(account, idBytes);
+
+        // if the capability was not found in the cache, retrieve the corresponding data from the blockchain
         if (capability == null) {
-            byte[] data = blockchain.getTransaction(identifier);
+            byte[] frame = blockchain.getTransaction(idBytes);
+            FrameOuterClass.Frame protoFrame = Protobuf.parseFrame(frame, VERSION);
 
-            if (data == null)
-                throw new IllegalArgumentException(String.format("There was no data found identified by '%s'.", Hex.toHexString(identifier)));
+            if (frame == null)
+                throw new IllegalArgumentException(String.format("There was no data found identified by '%s'.", idHex));
 
-            // TODO: get cap from disasseble, maybe cache it here?
-            capability = disassembleData(account, data);
+            capability = decryptCapability(account, protoFrame, idBytes);
 
             if (capability == null)
-                throw new NotAuthorizedException("The data to be attached could not be accessed or does not exist.");
+                throw new NotAuthorizedException("The data to be attached could not be accessed.");
         }
 
         return capability;
     }
 
     /**
-     * Prepares the given data for storing.
+     * Envelops the given data into a frame for storing.
      *
      * @param data
      * @param recipients
      * @param attachedCapabilities
      * @return
      */
-    private StorageObject assembleData(byte[] data, Set<PublicKey> recipients, Set<byte[]> attachedCapabilities) {
-        // TODO: refactor this method
+    private FrameWrapper assembleFrame(String data, Set<PublicKey> recipients, Set<byte[]> attachedCapabilities) {
+        // CAP = H(DATA)
         byte[] capability = Crypto.hashValue(data);
+
+        // ID = H(CAP)
         byte[] identifier = Crypto.hashValue(capability);
 
-        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        // encrypt CAP for each recipient PK
+        List<byte[]> encryptedCapability = encryptCapability(capability, recipients);
 
-        // build header: for each recipient [1 byte unsigned size indicator || encrypted capability]
+        // build the unencrypted payload: data || attachedCapabilities
+        byte[] payload = Protobuf.buildPayload(data, attachedCapabilities);
+
+        // symmetrically encrypt payload using the capability
+        byte[] encryptedPayload = Crypto.symmetricallyEncrypt(capability, payload);
+
+        FrameOuterClass.Frame frame = Protobuf.buildFrame(VERSION, encryptedCapability, encryptedPayload);
+
+        return new FrameWrapper(identifier, capability, frame);
+    }
+
+    /**
+     * Takes apart the given protocol buffer frame message.
+     *
+     * @param account
+     * @param identifier
+     * @param frame
+     * @return
+     */
+    private FrameWrapper disassembleFrame(KnownAccount account, byte[] identifier, byte[] frame) {
+        // get protocol buffer frame message object for the configured version
+        FrameOuterClass.Frame protoFrame = Protobuf.parseFrame(frame, VERSION);
+
+        // check cache for capability, decrypt it from the frame otherwise
+        byte[] capability = Optional.ofNullable(cache.get(account, identifier))
+                .orElse(decryptCapability(account, protoFrame, identifier));
+
+        // wrap the frame with meta information if the given account is able to decrypt its content
+        return capability != null ? new FrameWrapper(identifier, capability, protoFrame) : null;
+    }
+
+    /**
+     * Encrypts the given capability for every provided recipient.
+     *
+     * @param capability capability to encrypt
+     * @param recipients set of public keys to encrypt the capability for
+     * @return List of ciphertexts.
+     */
+    private List<byte[]> encryptCapability(byte[] capability, Collection<PublicKey> recipients) {
+        List<byte[]> encryptedCapability = new ArrayList<>();
+
         for (PublicKey recipient : recipients) {
-            byte[] encCap = cryptoStore.encrypt(recipient, capability);
-
-            if (encCap.length > 0xff)
-                throw new IllegalStateException("The encrypted capability exceeds the size limit of 255 bytes.");
-
-            byte encCapSize = (byte) encCap.length;
-            outputStream.write(encCapSize);
-            outputStream.writeBytes(encCap);
+            encryptedCapability.add(cryptoStore.encrypt(recipient, capability));
         }
 
-        byte[] header = outputStream.toByteArray();
-        outputStream.reset();
-
-        // 2 bytes unsigned header size indicator
-        if(header.length > 0xffff)
-            throw new IllegalStateException("The composed header exceeds the size limit of 65535 bytes.");
-
-        short headerSize = (short) header.length;
-
-        // concatenate all capabilities to attach
-        for (byte[] attachedCapability : attachedCapabilities)
-            outputStream.writeBytes(attachedCapability);
-
-        byte[] attachment = outputStream.toByteArray();
-        outputStream.reset();
-
-        if(attachment.length > 0xffff)
-            throw new IllegalStateException("The capabilities to attach exceed the size limit of 65535 bytes.");
-
-        short attachmentSize = (short) attachment.length;
-
-        // arrange payload: size of attachment || data || attachment
-        outputStream.write(attachmentSize);
-        outputStream.writeBytes(data);
-        outputStream.writeBytes(attachment);
-
-        // encrypt payload
-        byte[] payload = Crypto.symmetricallyEncrypt(capability, outputStream.toByteArray());
-        outputStream.reset();
-
-        // VERSION || size of header || header || payload
-        outputStream.write(VERSION);
-        outputStream.write(headerSize);
-        outputStream.writeBytes(header);
-        outputStream.writeBytes(payload);
-
-        return new StorageObject(identifier, capability, outputStream.toByteArray());
+        return encryptedCapability;
     }
 
-    private byte[] disassembleData(Account account, byte[] data) {
-        // TODO: split E_PK1(cap) E_PK2(cap) ...
-        // signed byte to unsigned number: int i = (0x000000FF) & b;
-        return null;
+    /**
+     * Attempts to decrypt a capability matching the provided identifier from a list of ciphertexts using the given account.
+     *
+     * @param account
+     * @param frame
+     * @param identifier
+     * @return
+     */
+    private byte[] decryptCapability(KnownAccount account, FrameOuterClass.Frame frame, byte[] identifier) {
+        List<byte[]> encCapList = Protobuf.decode(frame.getEncryptedCapabilityList());
+        byte[] capability = encCapList.stream()
+                .map(ciphertext -> cryptoStore.decrypt(account.getPublicKey(), account.getPassword(), ciphertext))
+                .filter(Objects::nonNull)
+                .findFirst().orElse(null);
+
+        // check the property H(CAP) = ID
+        if(capability == null || Arrays.equals(Crypto.hashValue(capability), identifier))
+            return null;
+
+        // add capability to cache
+        cache.add(account, identifier, capability);
+
+        return capability;
     }
 
-    @Override
-    public List<String> listData(Account account, Filter filter) throws AuthenticationException {
-        // validate input
-        Objects.requireNonNull(account, "Parameter 'account' cannot be null.");
+    private Data decryptPayload(FrameWrapper wrappedFrame, Account account) {
+        // retrieve encrypted payload
+        byte[] encPayload = Protobuf.decode(wrappedFrame.unwrap().getEncryptedPayload());
+        // decrypt the payload using the capability
+        byte[] decPayload = Crypto.symmetricallyDecrypt(wrappedFrame.getCapability(), encPayload);
+        // get protocol buffer payload message object
+        FrameOuterClass.Payload payload = Protobuf.parsePayload(decPayload);
 
-        // TODO: implement
-        if (false)
-            throw new AuthenticationException();
-        return null;
+        List<byte[]> capabilities = Protobuf.decode(payload.getAttachedCapabilityList());
+        List<String> identifiers = capabilities.stream().map(Crypto::hashValue).map(Hex::toHexString).collect(Collectors.toList());
+
+        // cache attached capabilities
+        capabilities.forEach(cap -> cache.add(account, Crypto.hashValue(cap), cap));
+
+        return new Data(payload.getData(), identifiers);
     }
-
-    @Override
-    public String getData(String id, Account account) throws AuthenticationException {
-        // validate input
-        Assert.requireNonEmpty(id, "id");
-        Assert.requireNonNull(account, "account");
-
-        // TODO: implement
-        if (false)
-            throw new AuthenticationException();
-        return null;
-    }
-
-    @Override
-    public List<String> listSubjects() {
-        // TODO: implement
-        List<String> result = new ArrayList<>();
-        // result.add(new Subject());
-        return result;
-    }
-
-    @Override
-    public String createAccount(String password) {
-        // validate input
-        Assert.requireNonEmpty(password, "password");
-
-        // create key pair for the account
-        PublicKey publicKey = cryptoStore.generateKeyPair(password);
-
-        // take 160 LSB in hex representation as account identifier
-        byte[] pkBytes = publicKey.getEncoded();
-        byte[] idBytes = Arrays.copyOfRange(pkBytes, pkBytes.length - 20, pkBytes.length);
-        String identifier = Hex.toHexString(idBytes);
-
-        // pass created public key to the key server for distribution
-        keyServer.registerKey(identifier, publicKey);
-
-        // create an account on the blockchain tied to id and pwd
-        blockchain.createEntity(new Account(identifier, password));
-
-        return identifier;
-    }
-
 }
