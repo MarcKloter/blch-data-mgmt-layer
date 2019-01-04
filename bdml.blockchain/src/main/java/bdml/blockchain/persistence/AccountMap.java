@@ -47,4 +47,7 @@ public class AccountMap {
         }
     }
 
+    public String get(String identifier) {
+        return this.accountMap.get(identifier);
+    }
 }

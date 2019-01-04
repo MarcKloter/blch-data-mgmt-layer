@@ -1,0 +1,37 @@
+[
+	{
+		"constant": false,
+		"inputs": [
+			{
+				"name": "identifier",
+				"type": "uint256"
+			},
+			{
+				"name": "payload",
+				"type": "bytes"
+			}
+		],
+		"name": "newData",
+		"outputs": [],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"name": "identifier",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"name": "payload",
+				"type": "bytes"
+			}
+		],
+		"name": "DataEvent",
+		"type": "event"
+	}
+]
