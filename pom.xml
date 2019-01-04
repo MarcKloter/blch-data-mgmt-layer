@@ -25,38 +25,14 @@
         <module>bdml.ipfs</module>
     </modules>
 
-	<!-- fix versions of dependencies -->
 	<dependencyManagement>
 		<dependencies>
-			<!-- https://mvnrepository.com/artifact/org.jetbrains.kotlin/kotlin-stdlib -->
+			<!-- https://mvnrepository.com/artifact/org.junit.jupiter/junit-jupiter-api -->
 			<dependency>
-				<groupId>org.jetbrains.kotlin</groupId>
-				<artifactId>kotlin-stdlib</artifactId>
-				<version>1.2.71</version>
-			</dependency>
-			<!-- https://mvnrepository.com/artifact/org.eclipse.collections/eclipse-collections -->
-			<dependency>
-				<groupId>org.eclipse.collections</groupId>
-				<artifactId>eclipse-collections</artifactId>
-				<version>10.0.0.M2</version>
-			</dependency>
-			<!-- https://mvnrepository.com/artifact/org.eclipse.collections/eclipse-collections-forkjoin -->
-			<dependency>
-				<groupId>org.eclipse.collections</groupId>
-				<artifactId>eclipse-collections-forkjoin</artifactId>
-				<version>10.0.0.M2</version>
-			</dependency>
-			<!-- https://mvnrepository.com/artifact/org.eclipse.collections/eclipse-collections-api -->
-			<dependency>
-				<groupId>org.eclipse.collections</groupId>
-				<artifactId>eclipse-collections-api</artifactId>
-				<version>10.0.0.M2</version>
-			</dependency>
-			<!-- https://mvnrepository.com/artifact/com.google.guava/guava -->
-			<dependency>
-				<groupId>com.google.guava</groupId>
-				<artifactId>guava</artifactId>
-				<version>27.0.1-jre</version>
+				<groupId>org.junit.jupiter</groupId>
+				<artifactId>junit-jupiter-api</artifactId>
+				<version>5.4.0-M1</version>
+				<scope>test</scope>
 			</dependency>
 		</dependencies>
 	</dependencyManagement>

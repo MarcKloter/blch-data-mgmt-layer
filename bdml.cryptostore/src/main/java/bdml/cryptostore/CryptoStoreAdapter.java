@@ -79,7 +79,7 @@ public class CryptoStoreAdapter implements CryptographicStore {
             iesCipher.init(Cipher.ENCRYPT_MODE, key, params);
 
             // format: 0x02/0x03 || coordinate x || (PKCS5 padded) ciphertext || 20 bytes HMAC-digest || 16 bytes nonce
-            return Util.concat(iesCipher.doFinal(plaintext), nonce);
+            return Util.concatenate(iesCipher.doFinal(plaintext), nonce);
         } catch (GeneralSecurityException e) {
             throw new MisconfigurationException(e.getMessage());
         }
