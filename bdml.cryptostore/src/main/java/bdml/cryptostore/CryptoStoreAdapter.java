@@ -2,30 +2,28 @@ package bdml.cryptostore;
 
 import java.security.*;
 import java.security.spec.ECGenParameterSpec;
-import java.security.spec.ECPrivateKeySpec;
+import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
-import java.security.spec.X509EncodedKeySpec;
 import java.util.Arrays;
 
 import bdml.cryptostore.persistence.KeyPairList;
-import bdml.cryptostore.persistence.SecuredKeyPair;
 import bdml.services.CryptographicStore;
 import bdml.services.exceptions.MisconfigurationException;
+import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.jce.spec.IESParameterSpec;
-import org.bouncycastle.util.encoders.Hex;
 
+import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
-import javax.crypto.SecretKey;
-import javax.crypto.spec.SecretKeySpec;
 
 public class CryptoStoreAdapter implements CryptographicStore {
     // TODO: load KEY_GEN_ALG and EC_CURVE from configuration file
     private final String KEY_GEN_ALG = "EC";
     private final String ASYMMETRIC_CIPHER = "ECIESwithAES-CBC";
-    //private final String EC_CURVE = "secp256k1";
-    private final String EC_CURVE = "secp521r1";
+    private final String EC_CURVE = "secp256k1";
+    //private final String EC_CURVE = "secp521r1";
     //private final String EC_CURVE = "secp384r1";
 
     private KeyPairList keyPairs;
@@ -110,7 +108,12 @@ public class CryptoStoreAdapter implements CryptographicStore {
 
             return iesCipher.doFinal(ciphertext);
         } catch (GeneralSecurityException e) {
-            throw new MisconfigurationException(e.getMessage());
+            switch (e.getCause().getClass().getSimpleName()) {
+                case "InvalidCipherTextException":
+                    return null;
+                default:
+                    throw new MisconfigurationException(e.getMessage());
+            }
         }
     }
 }

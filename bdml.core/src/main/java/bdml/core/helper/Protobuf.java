@@ -44,6 +44,9 @@ public class Protobuf {
     }
 
     public static FrameOuterClass.Frame parseFrame(byte[] frame, int version) {
+        if(frame == null)
+            return null;
+
         try {
             FrameOuterClass.Frame profbufFrame = FrameOuterClass.Frame.parseFrom(frame);
 

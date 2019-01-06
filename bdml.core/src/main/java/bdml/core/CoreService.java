@@ -21,7 +21,8 @@ import bdml.services.api.types.Account;
 import bdml.services.api.types.Data;
 import bdml.services.api.types.Filter;
 import bdml.services.api.Core;
-import org.bouncycastle.util.encoders.Hex;
+import org.apache.commons.codec.DecoderException;
+import org.apache.commons.codec.binary.Hex;
 
 public class CoreService implements Core {
     // TODO: load constants from configuration file
@@ -42,31 +43,46 @@ public class CoreService implements Core {
         // check provided account
         KnownAccount caller = checkAccount(account);
 
+        // resolve the attachments (list of data identifiers) to capabilities using the given account (requires access to the data)
+        Set<byte[]> attachedCapabilities = resolveAllIdentifiers(caller, attachments);
+
         // resolve subjects to public keys that will be able to read the data
         Set<PublicKey> recipients = resolveAllSubjects(subjects);
 
         // add owner as recipient
         recipients.add(caller.getPublicKey());
 
-        // resolve data identifiers to capabilities using the given account (requires access to the data)
-        Set<byte[]> attachedCapabilities = resolveAllIdentifiers(caller, attachments);
-
         // TODO: save data to IPFS
 
         FrameWrapper frame = assembleFrame(data, recipients, attachedCapabilities);
 
         // persist frame in blockchain
-        blockchain.createTransaction(account, frame.getIdentifier(), frame.getBytes());
+        blockchain.storeFrame(account, frame.getIdentifier(), frame.getBytes());
 
         // cache capability
         cache.add(account, frame.getIdentifier(), frame.getCapability());
 
-        return Hex.toHexString(frame.getIdentifier());
+        return Hex.encodeHexString(frame.getIdentifier());
+    }
+
+    @Override
+    public String storeData(String data, Account account, List<String> subjects) throws AuthenticationException {
+        return storeData(data, null, account, subjects);
+    }
+
+    @Override
+    public String storeData(String data, Account account) throws AuthenticationException {
+        return storeData(data, null, account, null);
     }
 
     @Override
     public String storeData(Data data, Account account, List<String> subjects) throws AuthenticationException {
         return storeData(data.getData(), data.getAttachments(), account, subjects);
+    }
+
+    @Override
+    public String storeData(Data data, Account account) throws AuthenticationException {
+        return storeData(data.getData(), data.getAttachments(), account, null);
     }
 
     @Override
@@ -82,21 +98,20 @@ public class CoreService implements Core {
         Assert.requireNonEmpty(identifier, "id");
 
         // validate identifier format
-        byte[] idBytes = Hex.decode(identifier);
-        Assert.require32Bytes(idBytes);
+        byte[] idBytes = decodeIdentifier(identifier);
 
         // check provided account
         KnownAccount caller = checkAccount(account);
 
         // retrieve data frame from blockchain
-        byte[] frame = blockchain.getTransaction(idBytes);
+        Collection<byte[]> frames = blockchain.getFrames(idBytes);
 
-        FrameWrapper wrappedFrame = disassembleFrame(caller, Hex.decode(identifier), frame);
+        // check cache for capability
+        byte[] capability = cache.get(account, idBytes);
 
-        if (wrappedFrame == null)
-            return null;
+        Optional<FrameWrapper> frame = parseFrames(caller, idBytes, capability, frames);
 
-        return decryptPayload(wrappedFrame, account);
+        return frame.map(f -> decryptPayload(f, account)).orElse(null);
     }
 
     @Override
@@ -117,7 +132,7 @@ public class CoreService implements Core {
         // take 160 LSB in hex representation as account identifier
         byte[] pkBytes = publicKey.getEncoded();
         byte[] idBytes = Arrays.copyOfRange(pkBytes, pkBytes.length - 20, pkBytes.length);
-        String identifier = Hex.toHexString(idBytes);
+        String identifier = Hex.encodeHexString(idBytes);
 
         // pass created public key to the key server for distribution
         keyServer.registerKey(identifier, publicKey);
@@ -153,18 +168,72 @@ public class CoreService implements Core {
     }
 
     /**
+     * Decodes the given 32 bytes identifier from hex representation to a byte array.
+     *
+     * @param identifier hex string representation of an identifier
+     * @return The byte array of the given identifier.
+     * @throws IllegalArgumentException if {@code identifier} has an invalid format.
+     */
+    private byte[] decodeIdentifier(String identifier) {
+        try {
+            byte[] idBytes = Hex.decodeHex(identifier);
+
+            // check whether the decoded identifier is valid
+            Assert.require32Bytes(idBytes);
+
+            return idBytes;
+        } catch (DecoderException e) {
+            throw new IllegalArgumentException(String.format("The identifier '%s' is invalid: %s.", identifier, e.getMessage()));
+        }
+    }
+
+    private Set<byte[]> resolveAllIdentifiers(KnownAccount account, Collection<String> identifiers) {
+        // create empty list if no identifiers are present
+        identifiers = Optional.ofNullable(identifiers).orElse(new ArrayList<>());
+
+        Set<byte[]> capabilities = new HashSet<>();
+        identifiers.stream()
+                .distinct() // distinct to avoid unnecessary operations
+                .map(this::decodeIdentifier) // decode identifier to valid byte array
+                .map(id -> resolveIdentifier(account, id))
+                .collect(Collectors.toCollection(() -> capabilities));
+        return capabilities;
+    }
+
+    private byte[] resolveIdentifier(KnownAccount account, byte[] identifier) {
+        // check cache for capability
+        byte[] capability = cache.get(account, identifier);
+
+        // if the capability was not found in the cache, retrieve the corresponding data from the blockchain
+        if (capability == null) {
+            Collection<byte[]> frames = blockchain.getFrames(identifier);
+
+            if (frames.isEmpty())
+                throw new IllegalArgumentException(String.format("There was no data found identified by '%s'.", Hex.encodeHexString(identifier)));
+
+            Optional<FrameWrapper> frame = parseFrames(account, identifier, capability, frames);
+            capability = frame.map(FrameWrapper::getCapability)
+                    .orElseThrow(() -> new NotAuthorizedException("The data to be attached could not be accessed."));
+        }
+
+        return capability;
+    }
+
+    /**
      * Resolves the given addresses to public keys using the keyserver.
      *
      * @param subjects list of addresses
      * @return Set of distinct public keys corresponding to the given subjects.
      */
     private Set<PublicKey> resolveAllSubjects(List<String> subjects) {
+        // create empty list if no subjects are present
+        subjects = Optional.ofNullable(subjects).orElse(new ArrayList<>());
+
         Set<PublicKey> resolvedSubjects = new HashSet<>();
-        if (subjects != null)
-            subjects.stream()
-                    .distinct() // distinct to avoid unnecessary operations
-                    .map(this::resolveSubject)
-                    .collect(Collectors.toCollection(() -> resolvedSubjects));
+        subjects.stream()
+                .distinct() // distinct to avoid unnecessary operations
+                .map(this::resolveSubject)
+                .collect(Collectors.toCollection(() -> resolvedSubjects));
         return resolvedSubjects;
     }
 
@@ -178,44 +247,17 @@ public class CoreService implements Core {
     private PublicKey resolveSubject(String identifier) {
         PublicKey pk = keyServer.queryKey(identifier);
 
-        if (pk == null)
-            throw new IllegalArgumentException(String.format("There was no subject found for the identifier '%s'.", identifier));
-
-        return pk;
+        return Optional.ofNullable(pk)
+                .orElseThrow(() -> new IllegalArgumentException(String.format("There was no subject found for the identifier '%s'.", identifier)));
     }
 
-    private Set<byte[]> resolveAllIdentifiers(KnownAccount account, Collection<String> identifiers) {
-        Set<byte[]> capabilities = new HashSet<>();
-        if (identifiers != null)
-            identifiers.stream()
-                    .distinct() // distinct to avoid unnecessary operations
-                    .map(id -> resolveIdentifier(account, id))
-                    .collect(Collectors.toCollection(() -> capabilities));
-        return capabilities;
-    }
-
-    private byte[] resolveIdentifier(KnownAccount account, String idHex) {
-        byte[] idBytes = Hex.decode(idHex);
-        Assert.require32Bytes(idBytes);
-
-        // check cache for capability
-        byte[] capability = cache.get(account, idBytes);
-
-        // if the capability was not found in the cache, retrieve the corresponding data from the blockchain
-        if (capability == null) {
-            byte[] frame = blockchain.getTransaction(idBytes);
-            FrameOuterClass.Frame protoFrame = Protobuf.parseFrame(frame, VERSION);
-
-            if (frame == null)
-                throw new IllegalArgumentException(String.format("There was no data found identified by '%s'.", idHex));
-
-            capability = decryptCapability(account, protoFrame, idBytes);
-
-            if (capability == null)
-                throw new NotAuthorizedException("The data to be attached could not be accessed.");
+    private Optional<FrameWrapper> parseFrames(KnownAccount account, byte[] identifier, byte[] capability, Collection<byte[]> frames) {
+        for(byte[] frame : frames) {
+            Optional<FrameWrapper> frameWrapper = Optional.ofNullable(disassembleFrame(account, identifier, capability, frame));
+            if(frameWrapper.isPresent())
+                return frameWrapper;
         }
-
-        return capability;
+        return Optional.empty();
     }
 
     /**
@@ -227,17 +269,17 @@ public class CoreService implements Core {
      * @return
      */
     private FrameWrapper assembleFrame(String data, Set<PublicKey> recipients, Set<byte[]> attachedCapabilities) {
-        // CAP = H(DATA)
-        byte[] capability = Crypto.hashValue(data);
+        // build the unencrypted payload: data || attachedCapabilities
+        byte[] payload = Protobuf.buildPayload(data, attachedCapabilities);
+
+        // CAP = H(PAYLOAD)
+        byte[] capability = Crypto.hashValue(payload);
 
         // ID = H(CAP)
         byte[] identifier = Crypto.hashValue(capability);
 
         // encrypt CAP for each recipient PK
         List<byte[]> encryptedCapability = encryptCapability(capability, recipients);
-
-        // build the unencrypted payload: data || attachedCapabilities
-        byte[] payload = Protobuf.buildPayload(data, attachedCapabilities);
 
         // symmetrically encrypt payload using the capability
         byte[] encryptedPayload = Crypto.symmetricallyEncrypt(capability, payload);
@@ -250,18 +292,18 @@ public class CoreService implements Core {
     /**
      * Takes apart the given protocol buffer frame message.
      *
-     * @param account
-     * @param identifier
+     * @param account account containing public key and password for the crypto store to decrypt the capability if needed
+     * @param identifier 32 bytes data identifier
+     * @param capability cached capability or null
      * @param frame
      * @return
      */
-    private FrameWrapper disassembleFrame(KnownAccount account, byte[] identifier, byte[] frame) {
+    private FrameWrapper disassembleFrame(KnownAccount account, byte[] identifier, byte[] capability, byte[] frame) {
         // get protocol buffer frame message object for the configured version
         FrameOuterClass.Frame protoFrame = Protobuf.parseFrame(frame, VERSION);
 
-        // check cache for capability, decrypt it from the frame otherwise
-        byte[] capability = Optional.ofNullable(cache.get(account, identifier))
-                .orElse(decryptCapability(account, protoFrame, identifier));
+        // check whether a capability was provided (from cache) otherwise decrypt it from the frame
+        capability = Optional.ofNullable(capability).orElse(decryptCapability(account, protoFrame, identifier));
 
         // wrap the frame with meta information if the given account is able to decrypt its content
         return capability != null ? new FrameWrapper(identifier, capability, protoFrame) : null;
@@ -309,16 +351,16 @@ public class CoreService implements Core {
         return capability;
     }
 
-    private Data decryptPayload(FrameWrapper wrappedFrame, Account account) {
+    private Data decryptPayload(FrameWrapper frame, Account account) {
         // retrieve encrypted payload
-        byte[] encPayload = Protobuf.decode(wrappedFrame.unwrap().getEncryptedPayload());
+        byte[] encPayload = Protobuf.decode(frame.unwrap().getEncryptedPayload());
         // decrypt the payload using the capability
-        byte[] decPayload = Crypto.symmetricallyDecrypt(wrappedFrame.getCapability(), encPayload);
+        byte[] decPayload = Crypto.symmetricallyDecrypt(frame.getCapability(), encPayload);
         // get protocol buffer payload message object
         FrameOuterClass.Payload payload = Protobuf.parsePayload(decPayload);
 
         List<byte[]> capabilities = Protobuf.decode(payload.getAttachedCapabilityList());
-        List<String> identifiers = capabilities.stream().map(Crypto::hashValue).map(Hex::toHexString).collect(Collectors.toList());
+        List<String> identifiers = capabilities.stream().map(Crypto::hashValue).map(Hex::encodeHexString).collect(Collectors.toList());
 
         // cache attached capabilities
         capabilities.forEach(cap -> cache.add(account, Crypto.hashValue(cap), cap));

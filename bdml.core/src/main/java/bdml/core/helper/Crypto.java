@@ -10,24 +10,11 @@ import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
 public class Crypto {
-    private static MessageDigest digest;
-
-    public static final int ENCRYPT_MODE = 1;
-    public static final int DECRYPT_MODE = 2;
-
     // TODO: load application.properties config
     private static final String HASH_FUNCTION = "SHA-256";
     private static final String SYMMETRIC_ALGORITHM = "AES";
     // using PKCS#7 padding (identifier in the SUN provider misleading)
     private static final String SYMMETRIC_CIPHER = "AES/CBC/PKCS5Padding";
-
-    static {
-        try {
-            digest = MessageDigest.getInstance(HASH_FUNCTION);
-        } catch (NoSuchAlgorithmException e) {
-            throw new MisconfigurationException(e.getMessage());
-        }
-    }
 
     public static byte[] symmetricallyEncrypt(byte[] capability, byte[] plaintext) {
         SecretKeySpec key = new SecretKeySpec(capability, SYMMETRIC_ALGORITHM);
@@ -76,19 +63,13 @@ public class Crypto {
      * @return A byte array containing the message digest.
      */
     public static byte[] hashValue(byte[] message) {
-        return digest.digest(message);
+        try {
+            MessageDigest digest = MessageDigest.getInstance(HASH_FUNCTION);
+            return digest.digest(message);
+        } catch (NoSuchAlgorithmException e) {
+            throw new MisconfigurationException(e.getMessage());
+        }
     }
-
-    /**
-     * Applies the message digest algorithm set in the application configuration on the given input.
-     *
-     * @param message UTF-8 string representation of the message
-     * @return A byte array containing the message digest.
-     */
-    public static byte[] hashValue(String message) {
-        return digest.digest(message.getBytes(StandardCharsets.UTF_8));
-    }
-
 
     /**
      * Concatenate two byte arrays.
