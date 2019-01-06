@@ -11,6 +11,9 @@ import javax.crypto.spec.SecretKeySpec;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.PublicKey;
@@ -20,14 +23,16 @@ import java.util.List;
 
 public class KeyPairList {
     // TODO: load FILENAME from configuration file
+    private final String DIRECTORY = "bdml-data";
     private final String FILENAME = "keyPairList.json";
+    private final String FILEPATH = DIRECTORY + "/" + FILENAME;
 
     private List<SecuredKeyPair> keyPairs;
 
     public KeyPairList() {
         // load previously generated key pairs
         ObjectMapper mapper = new ObjectMapper();
-        File file = new File(FILENAME);
+        File file = new File(FILEPATH);
         if (file.exists()) {
             try {
                 JsonParser jsonParser = new JsonFactory().createParser(file);
@@ -37,6 +42,16 @@ public class KeyPairList {
                 throw new MisconfigurationException(e.getMessage());
             }
         } else {
+            // create path if it doesn't exist
+            Path path = Paths.get(DIRECTORY);
+            if(Files.notExists(path)) {
+                try {
+                    Files.createDirectories(path);
+                } catch (IOException e) {
+                    throw new MisconfigurationException(e.getMessage());
+                }
+            }
+
             this.keyPairs = new ArrayList<>();
         }
     }
@@ -44,7 +59,7 @@ public class KeyPairList {
     /**
      * Appends the specified key pair to the end of the persisted list.
      *
-     * @param keyPair key pair to append to the list
+     * @param keyPair  key pair to append to the list
      * @param password Password to secure the key pair.
      */
     public void add(KeyPair keyPair, String password) {
@@ -55,8 +70,8 @@ public class KeyPairList {
 
         // write list to file
         ObjectMapper mapper = new ObjectMapper();
-            try {
-            mapper.writeValue(new FileWriter(FILENAME, false), keyPairs);
+        try {
+            mapper.writeValue(new FileWriter(FILEPATH, false), keyPairs);
         } catch (IOException e) {
             throw new MisconfigurationException(e.getMessage());
         }
@@ -68,20 +83,19 @@ public class KeyPairList {
      *
      * @param key    public key to look for
      * @param secret password to the given public key
-     * @return Bytes of private key corresponding to the given public key/secret combination.
+     * @return Bytes of private key corresponding to the given public key/secret combination or null.
      */
     public byte[] get(PublicKey key, String secret) {
         if (key == null || secret == null)
             return null;
 
-        String encodedKey = Base64.getEncoder().encodeToString(key.getEncoded());
+        String encodedPublicKey = Base64.getEncoder().encodeToString(key.getEncoded());
         String passwordHash = Util.sha256(secret);
 
-        SecuredKeyPair securedKeyPair = keyPairs.stream()
-                .filter(o -> o.getPublicKey().equals(encodedKey) && o.getPasswordHash().equals(passwordHash))
+        return keyPairs.stream()
+                .filter(o -> o.getPublicKey().equals(encodedPublicKey) && o.getPasswordHash().equals(passwordHash))
                 .findFirst()
+                .map(encodedPrivateKey -> Base64.getDecoder().decode(encodedPrivateKey.getPrivateKey()))
                 .orElse(null);
-
-        return Base64.getDecoder().decode(securedKeyPair.getPrivateKey());
     }
 }

@@ -8,6 +8,7 @@ import java.sql.*;
 public class CacheImpl implements Cache {
     // TODO: load constants from configuration file
     private final String CIPHER = "AES";
+    private final String DIRECTORY = "bdml-data";
 
     @Override
     public void add(Account account, byte[] id, byte[] capability) {
@@ -56,19 +57,19 @@ public class CacheImpl implements Cache {
         // combination of file password (used for encryption) and user password
         String password = Util.sha256(db + pwd) + " " + pwd;
 
-        // only allow to open existing databases
-        String url = String.format("jdbc:h2:./%s;CIPHER=%s;IFEXISTS=TRUE", db, CIPHER);
+        String url = String.format("jdbc:h2:./%s/%s;CIPHER=%s", DIRECTORY, db, CIPHER);
         try {
-            return DriverManager.getConnection(url, db, password);
+            // only allow to open existing databases
+            return DriverManager.getConnection(url + ";IFEXISTS=TRUE", db, password);
         } catch (SQLException e) {
-            return createCache(db, password);
+            return createCache(url, db, password);
         }
     }
 
-    private Connection createCache(String db, String password) {
-        String url = String.format("jdbc:h2:./%s;CIPHER=%s;IFEXISTS=FALSE", db, CIPHER);
+    private Connection createCache(String url, String db, String password) {
         try {
-            Connection conn = DriverManager.getConnection(url, db, password);
+            // only allow to crate non-existent databases
+            Connection conn = DriverManager.getConnection(url + ";IFEXISTS=FALSE", db, password);
             Statement stmt = conn.createStatement();
             stmt.execute("CREATE TABLE CAPABILITIES(id BINARY(32) primary key, capability BINARY(32) NOT NULL)");
             return conn;

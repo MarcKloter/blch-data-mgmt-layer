@@ -11,20 +11,26 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.PublicKey;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 public class KeyServerAdapter implements KeyServer {
+    private final String DIRECTORY = "bdml-data";
     private final String FILENAME = "keyPairMap.json";
+    private final String FILEPATH = DIRECTORY + "/" + FILENAME;
 
     private Map<String, Subject> registeredKeys;
 
     public KeyServerAdapter() {
         // load previously generated key pairs
         ObjectMapper mapper = new ObjectMapper();
-        File file = new File(FILENAME);
+        File file = new File(FILEPATH);
         if(file.exists()) {
             try {
                     JsonParser jsonParser = new JsonFactory().createParser(file);
@@ -34,6 +40,16 @@ public class KeyServerAdapter implements KeyServer {
                 throw new MisconfigurationException(e.getMessage());
             }
         } else {
+            // create path if it doesn't exist
+            Path path = Paths.get(DIRECTORY);
+            if(Files.notExists(path)) {
+                try {
+                    Files.createDirectories(path);
+                } catch (IOException e) {
+                    throw new MisconfigurationException(e.getMessage());
+                }
+            }
+
             this.registeredKeys = new HashMap<>();
         }
     }
@@ -45,7 +61,7 @@ public class KeyServerAdapter implements KeyServer {
 
         ObjectMapper mapper = new ObjectMapper();
         try {
-            mapper.writeValue(new FileWriter(FILENAME, false), registeredKeys);
+            mapper.writeValue(new FileWriter(FILEPATH, false), registeredKeys);
         } catch (IOException e) {
             throw new MisconfigurationException(e.getMessage());
         }
@@ -57,6 +73,7 @@ public class KeyServerAdapter implements KeyServer {
             return null;
 
         Subject subject = registeredKeys.get(identifier);
-        return (subject != null) ? KeyDecoder.decodePublicKey(subject.getPublicKey()) : null;
+
+        return Optional.ofNullable(subject).map(s -> KeyDecoder.decodePublicKey(s.getPublicKey())).orElse(null);
     }
 }
