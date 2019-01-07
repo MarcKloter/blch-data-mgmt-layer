@@ -16,6 +16,8 @@
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<!-- SonarQube: ignore generated code -->
+		<sonar.exclusions>src/main/java/bdml/blockchain/web3j/EventStorage.java</sonar.exclusions>
 	</properties>
 
 	<build>
