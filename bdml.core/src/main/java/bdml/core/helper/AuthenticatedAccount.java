@@ -7,10 +7,10 @@ import java.security.PublicKey;
 /**
  * Adds a public key field to the API Account.
  */
-public class KnownAccount extends Account {
+public class AuthenticatedAccount extends Account {
     private PublicKey publicKey;
 
-    public KnownAccount(Account account, PublicKey publicKey) {
+    public AuthenticatedAccount(Account account, PublicKey publicKey) {
         super(account.getIdentifier(), account.getPassword());
         this.publicKey = publicKey;
     }

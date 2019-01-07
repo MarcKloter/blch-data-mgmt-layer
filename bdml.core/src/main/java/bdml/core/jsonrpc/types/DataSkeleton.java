@@ -10,7 +10,7 @@ public class DataSkeleton {
     private String data;
     private List<String> attachments;
 
-    public DataSkeleton( Data data) {
+    public DataSkeleton(Data data) {
         this.data = data.getData();
         this.attachments = data.getAttachments();
     }

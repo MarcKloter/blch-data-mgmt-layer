@@ -3,17 +3,21 @@ package bdml.core.jsonrpc;
 import bdml.core.CoreService;
 import bdml.core.jsonrpc.exceptions.AuthenticationExceptionWrapper;
 import bdml.core.jsonrpc.exceptions.InvalidParamsException;
+import bdml.core.jsonrpc.exceptions.NotAuthorizedExceptionWrapper;
 import bdml.core.jsonrpc.types.AccountWrapper;
 import bdml.core.jsonrpc.types.DataSkeleton;
 import bdml.core.jsonrpc.types.FilterWrapper;
 import bdml.services.api.Core;
 import bdml.services.api.exceptions.AuthenticationException;
+import bdml.services.api.exceptions.NotAuthorizedException;
+import bdml.services.api.types.Data;
 import com.github.arteam.simplejsonrpc.core.annotation.JsonRpcMethod;
 import com.github.arteam.simplejsonrpc.core.annotation.JsonRpcOptional;
 import com.github.arteam.simplejsonrpc.core.annotation.JsonRpcParam;
 import com.github.arteam.simplejsonrpc.core.annotation.JsonRpcService;
 
 import java.util.List;
+import java.util.Optional;
 
 @JsonRpcService
 public class CoreProxy {
@@ -31,6 +35,8 @@ public class CoreProxy {
             throw new InvalidParamsException(e.getMessage());
         } catch (AuthenticationException e) {
             throw new AuthenticationExceptionWrapper();
+        } catch (NotAuthorizedException e) {
+            throw new NotAuthorizedExceptionWrapper(e.getMessage());
         }
     }
 
@@ -48,9 +54,14 @@ public class CoreProxy {
     public DataSkeleton getData(@JsonRpcParam("id") String id,
                                 @JsonRpcParam("account") AccountWrapper account) {
         try {
-            return new DataSkeleton(core.getData(id, account.unwrap()));
+            Data data = core.getData(id, account.unwrap());
+            return Optional.ofNullable(data).map(DataSkeleton::new).orElse(null);
+        } catch (IllegalArgumentException e) {
+            throw new InvalidParamsException(e.getMessage());
         } catch (AuthenticationException e) {
             throw new AuthenticationExceptionWrapper();
+        } catch (NotAuthorizedException e) {
+            throw new NotAuthorizedExceptionWrapper(e.getMessage());
         }
     }
 
@@ -61,6 +72,10 @@ public class CoreProxy {
 
     @JsonRpcMethod
     public String createAccount(@JsonRpcParam("password") String password) {
-        return core.createAccount(password);
+        try {
+            return core.createAccount(password);
+        } catch (IllegalArgumentException e) {
+            throw new InvalidParamsException(e.getMessage());
+        }
     }
 }
