@@ -6,6 +6,7 @@ import org.apache.commons.cli.*;
 
 import java.io.*;
 import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 
 import static spark.Spark.*;
 
@@ -94,7 +95,7 @@ public class Starter {
     private static String getLocation() {
         try {
             String path = Starter.class.getProtectionDomain().getCodeSource().getLocation().getPath();
-            return URLDecoder.decode(path, "UTF-8");
+            return URLDecoder.decode(path, StandardCharsets.UTF_8);
         } catch (Exception e) {
             return null;
         }

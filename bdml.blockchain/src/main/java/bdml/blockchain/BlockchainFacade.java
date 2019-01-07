@@ -12,7 +12,6 @@ import java.util.Objects;
  * The BlockchainFacade implements the Blockchain interface and performs context-specific input validation.
  */
 public class BlockchainFacade implements Blockchain {
-    // TODO: load from config file
     private final String CONTRACT_ADDRESS;
 
     private AccountMap accounts;
@@ -56,8 +55,6 @@ public class BlockchainFacade implements Blockchain {
             throw new IllegalStateException("There was no associated entity found for the given account. Please initialize it by calling createEntity.");
 
         parity.storeData(fromAddress, account.getPassword(), CONTRACT_ADDRESS, identifier, frame);
-        // TODO: remove
-        System.out.println(Base64.getEncoder().encodeToString(frame));
     }
 
     @Override
