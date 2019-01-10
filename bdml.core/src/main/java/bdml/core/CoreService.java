@@ -1,6 +1,7 @@
 package bdml.core;
 
 import java.security.PublicKey;
+import java.security.SecureRandom;
 import java.util.*;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -19,14 +20,15 @@ import bdml.services.api.exceptions.AuthenticationException;
 import bdml.services.api.exceptions.NotAuthorizedException;
 import bdml.services.api.types.Account;
 import bdml.services.api.types.Data;
-import bdml.services.api.types.Filter;
 import bdml.services.api.Core;
+import bdml.services.api.types.Identifier;
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
 
 public class CoreService implements Core {
     // TODO: load constants from configuration file
     private final int VERSION = 1;
+    private final int NONCE_BYTES = 4;
 
     private Blockchain blockchain = new BlockchainFacade();
     private KeyServer keyServer = new KeyServerAdapter();
@@ -41,22 +43,22 @@ public class CoreService implements Core {
         Assert.requireNonEmpty(data, "data");
         AuthenticatedAccount caller = authenticate(account);
 
-        // resolve the attachments (list of data identifiers) to capabilities using the given account (requires access to the data)
-        Set<byte[]> attachedCapabilities = resolveAllIdentifiers(caller, attachments);
+        // resolve all data identifiers to capabilities to attach
+        Set<byte[]> attachedCapabilities = lookupCapabilities(caller, attachments);
 
         // resolve subjects to public keys that will be able to read the data
         Set<PublicKey> recipients = resolveAllSubjects(subjects);
 
-        // add owner as recipient
+        // addCapability owner as recipient
         recipients.add(caller.getPublicKey());
 
         // TODO: save data to IPFS
 
-        FrameWrapper frame = assembleFrame(data, recipients, attachedCapabilities);
+        ParsedFrame frame = assembleFrame(data, recipients, attachedCapabilities);
 
         blockchain.storeFrame(caller, frame.getIdentifier(), frame.getBytes());
 
-        cache.add(caller, frame.getIdentifier(), frame.getCapability());
+        cache.addCapability(caller, frame.getIdentifier(), frame.getCapability(), false);
 
         return Hex.encodeHexString(frame.getIdentifier());
     }
@@ -82,10 +84,32 @@ public class CoreService implements Core {
     }
 
     @Override
-    public List<String> listData(Account account, Filter filter) throws AuthenticationException {
+    public Set<String> listData(Account account) throws AuthenticationException {
         AuthenticatedAccount caller = authenticate(account);
 
-        return null;
+        pollNewFrames(caller);
+
+        Set<byte[]> identifiers = cache.getDirectlyAccessibleIdentifiers(caller);
+        return identifiers.stream().map(Hex::encodeHexString).collect(Collectors.toSet());
+    }
+
+    @Override
+    public Set<String> listDataChanges(Account account) throws AuthenticationException {
+        AuthenticatedAccount caller = authenticate(account);
+
+        return pollNewFrames(caller);
+    }
+
+    @Override
+    public Identifier listAttachments(Account account, String identifier) throws AuthenticationException {
+        Assert.requireNonEmpty(identifier, "id");
+        byte[] idBytes = validateIdentifier(identifier);
+        AuthenticatedAccount caller = authenticate(account);
+
+        // check whether the caller has access to the entry point
+        byte[] capability = lookupCapability(caller, idBytes);
+
+        return getAllAttachments(caller, idBytes, capability).orElse(null);
     }
 
     @Override
@@ -94,22 +118,18 @@ public class CoreService implements Core {
         byte[] idBytes = validateIdentifier(identifier);
         AuthenticatedAccount caller = authenticate(account);
 
-        Collection<byte[]> frames = blockchain.getFrames(idBytes);
-        if (frames.isEmpty()) return null;
+        // TODO: optimize getData by checking marked frames (MUST ENSURE THAT ATTACHMENTS ARE PROPERLY REMOVED FROM PARSED TABLE)
 
-        byte[] capability = cache.get(caller, idBytes);
+        byte[] frameBytes = blockchain.getFrame(idBytes);
+        if (frameBytes == null)
+            return null;
 
-        FrameWrapper frame = parseFrame(caller, idBytes, capability, frames);
+        byte[] capability = cache.getCapability(caller, idBytes);
 
-        return decryptPayload(frame, caller);
-    }
+        ParsedFrame frame = parseFrame(caller, idBytes, capability, frameBytes);
+        ParsedPayload payload = parsePayload(caller, frame);
 
-    @Override
-    public List<String> listSubjects() {
-        // TODO: implement
-        List<String> result = new ArrayList<>();
-        // result.add(new Subject());
-        return result;
+        return new Data(payload.getData(), payload.getIdentifiersHexString());
     }
 
     @Override
@@ -123,10 +143,17 @@ public class CoreService implements Core {
         byte[] idBytes = Arrays.copyOfRange(pkBytes, pkBytes.length - 20, pkBytes.length);
         String identifier = Hex.encodeHexString(idBytes);
 
+        Account account = new Account(identifier, password);
+
         keyServer.registerKey(identifier, publicKey);
 
-        blockchain.createEntity(new Account(identifier, password));
+        blockchain.createEntity(account);
         // TODO: createEntity return the address to transfer coins (not dev chain) - what to do?
+
+        // pointer at which the new account will start looking for new frames
+        byte[] pointer = blockchain.getLatestIdentifier();
+
+        cache.initialize(account, pointer);
 
         return identifier;
     }
@@ -169,36 +196,35 @@ public class CoreService implements Core {
 
             return idBytes;
         } catch (DecoderException e) {
-            throw new IllegalArgumentException(String.format("The identifier '%s' is invalid: %s.", identifier, e.getMessage()));
+            throw new IllegalArgumentException(String.format("The identifier '%s' is invalid: %s", identifier, e.getMessage()));
         }
     }
 
-    private Set<byte[]> resolveAllIdentifiers(AuthenticatedAccount account, Collection<String> identifiers) {
-        // create empty list if no identifiers are present
+    private Set<byte[]> lookupCapabilities(AuthenticatedAccount account, Collection<String> identifiers) {
+        // create empty list if no identifiers were provided
         identifiers = Optional.ofNullable(identifiers).orElse(new ArrayList<>());
 
         Set<byte[]> capabilities = new HashSet<>();
         identifiers.stream()
+                .filter(Objects::nonNull)
                 .distinct() // distinct to avoid unnecessary operations
                 .map(this::validateIdentifier)
-                .map(id -> resolveIdentifier(account, id))
+                .map(id -> lookupCapability(account, id))
                 .collect(Collectors.toCollection(() -> capabilities));
         return capabilities;
     }
 
-    private byte[] resolveIdentifier(AuthenticatedAccount account, byte[] identifier) {
-        // check cache for capability
-        byte[] capability = cache.get(account, identifier);
+    private byte[] lookupCapability(AuthenticatedAccount account, byte[] identifier) {
+        byte[] capability = cache.getCapability(account, identifier);
 
         // if the capability was not found in the cache, retrieve the corresponding data from the blockchain
         if (capability == null) {
-            Collection<byte[]> frames = blockchain.getFrames(identifier);
-
-            if (frames.isEmpty())
+            byte[] frameBytes = blockchain.getFrame(identifier);
+            if (frameBytes == null)
                 throw new IllegalArgumentException(String.format("There was no data found identified by '%s'.", Hex.encodeHexString(identifier)));
 
-            FrameWrapper frame = parseFrame(account, identifier, capability, frames);
-            capability = frame.getCapability() ;
+            ParsedFrame frame = parseFrame(account, identifier, capability, frameBytes);
+            capability = frame.getCapability();
         }
 
         return capability;
@@ -237,22 +263,6 @@ public class CoreService implements Core {
     }
 
     /**
-     *
-     * @param account
-     * @param identifier
-     * @param capability
-     * @param frames collection of frames in byte representation identifier by {@code identifier}
-     * @return
-     */
-    private FrameWrapper parseFrame(AuthenticatedAccount account, byte[] identifier, byte[] capability, Collection<byte[]> frames) {
-        for (byte[] frame : frames) {
-            Optional<FrameWrapper> frameWrapper = Optional.ofNullable(disassembleFrame(account, identifier, capability, frame));
-            if (frameWrapper.isPresent()) return frameWrapper.get();
-        }
-        throw new NotAuthorizedException(String.format("The data identified by '%s' could not be accessed.", Hex.encodeHexString(identifier)));
-    }
-
-    /**
      * Envelops the given data into a frame for storing.
      *
      * @param data
@@ -260,9 +270,13 @@ public class CoreService implements Core {
      * @param attachedCapabilities
      * @return
      */
-    private FrameWrapper assembleFrame(String data, Set<PublicKey> recipients, Set<byte[]> attachedCapabilities) {
-        // build the unencrypted payload: data || attachedCapabilities
-        byte[] payload = Protobuf.buildPayload(data, attachedCapabilities);
+    private ParsedFrame assembleFrame(String data, Set<PublicKey> recipients, Set<byte[]> attachedCapabilities) {
+        // generate nonce of configured length
+        byte[] nonce = new byte[NONCE_BYTES];
+        new SecureRandom().nextBytes(nonce);
+
+        // build the unencrypted payload: data || attachedCapabilities || nonce
+        byte[] payload = Protobuf.buildPayload(data, attachedCapabilities, nonce);
 
         // CAP = H(PAYLOAD)
         byte[] capability = Crypto.hashValue(payload);
@@ -278,27 +292,7 @@ public class CoreService implements Core {
 
         FrameOuterClass.Frame frame = Protobuf.buildFrame(VERSION, encryptedCapability, encryptedPayload);
 
-        return new FrameWrapper(identifier, capability, frame);
-    }
-
-    /**
-     * Takes apart the given protocol buffer frame message.
-     *
-     * @param account    account containing public key and password for the crypto store to decrypt the capability if needed
-     * @param identifier 32 bytes data identifier
-     * @param capability cached capability or null
-     * @param frame
-     * @return
-     */
-    private FrameWrapper disassembleFrame(AuthenticatedAccount account, byte[] identifier, byte[] capability, byte[] frame) {
-        // get protocol buffer frame message object for the configured version
-        FrameOuterClass.Frame protoFrame = Protobuf.parseFrame(frame, VERSION);
-
-        // check whether a capability was provided (from cache) otherwise decrypt it from the frame
-        capability = Optional.ofNullable(capability).orElse(decryptCapability(account, protoFrame, identifier));
-
-        // wrap the frame with meta information if the given account is able to decrypt its content
-        return capability != null ? new FrameWrapper(identifier, capability, protoFrame) : null;
+        return new ParsedFrame(identifier, capability, frame);
     }
 
     /**
@@ -319,6 +313,29 @@ public class CoreService implements Core {
     }
 
     /**
+     * Takes apart the given protocol buffer frame message.
+     *
+     * @param account    account containing public key and password for the crypto store to decrypt the capability if needed
+     * @param identifier 32 bytes data identifier
+     * @param capability cached capability or null
+     * @param frame
+     * @return
+     * @throws NotAuthorizedException
+     */
+    private ParsedFrame parseFrame(AuthenticatedAccount account, byte[] identifier, byte[] capability, byte[] frame) {
+        // getCapability protocol buffer frame message object for the configured version
+        FrameOuterClass.Frame protoFrame = Protobuf.parseFrame(frame, VERSION);
+
+        // check whether a capability was provided (from cache) otherwise decrypt it from the frame
+        capability = Optional.ofNullable(capability).orElse(decryptCapability(account, protoFrame, identifier));
+        if(capability == null)
+            throw new NotAuthorizedException(String.format("The data identified by '%s' could not be accessed.", Hex.encodeHexString(identifier)));
+
+        // wrap the frame with meta information if the given account is able to decrypt its content
+        return new ParsedFrame(identifier, capability, protoFrame);
+    }
+
+    /**
      * Attempts to decrypt a capability matching the provided identifier from a list of ciphertexts using the given account.
      *
      * @param account
@@ -334,19 +351,16 @@ public class CoreService implements Core {
                 .findFirst().orElse(null);
 
         // check the property H(CAP) = ID
-        if (capability == null || Arrays.equals(Crypto.hashValue(capability), identifier))
+        if (capability == null || !Arrays.equals(Crypto.hashValue(capability), identifier))
             return null;
 
-        cache.add(account, identifier, capability);
+        cache.addCapability(account, identifier, capability, false);
 
         return capability;
     }
 
-    private Data decryptPayload(FrameWrapper frame, Account account) {
-        // retrieve encrypted payload from frame
+    private ParsedPayload parsePayload(Account account, ParsedFrame frame) {
         byte[] encPayload = Protobuf.decode(frame.unwrap().getEncryptedPayload());
-
-        // decrypt the payload using the capability
         byte[] decPayload = Crypto.symmetricallyDecrypt(frame.getCapability(), encPayload);
 
         // parse the protocol buffer payload message object
@@ -355,11 +369,75 @@ public class CoreService implements Core {
         // retrieve attachments from payload
         List<byte[]> capabilities = Protobuf.decode(payload.getAttachedCapabilityList());
 
-        // create list of capabilities H(ID) in hex string representation
-        List<String> identifiers = capabilities.stream().map(Crypto::hashValue).map(Hex::encodeHexString).collect(Collectors.toList());
+        ParsedPayload parsedPayload = new ParsedPayload(payload.getData());
 
-        capabilities.forEach(cap -> cache.add(account, Crypto.hashValue(cap), cap));
+        capabilities.forEach(cap -> {
+            byte[] id = Crypto.hashValue(cap);
+            parsedPayload.addAttachment(id, cap);
+            cache.addCapability(account, id, cap, true);
+            cache.addAttachment(account, id, frame.getIdentifier());
+        });
 
-        return new Data(payload.getData(), identifiers);
+        return parsedPayload;
+    }
+
+    private Set<String> pollNewFrames(AuthenticatedAccount account) {
+        byte[] pointer = cache.getPointer(account);
+        Set<Map.Entry<byte[], byte[]>> newFrames = blockchain.getFrames(pointer);
+
+        Set<String> result = new HashSet<>();
+
+        for(Map.Entry<byte[], byte[]> entry : newFrames) {
+            byte[] identifier = entry.getKey();
+            byte[] frame = entry.getValue();
+
+            // check whether frame is was parsed before and cannot be read (otherwise pointer would have moved
+            if(!cache.wasParsedBefore(account, identifier)) {
+                try {
+                    // check whether the data was previously cached through getData or storeData
+                    byte[] capability = cache.getCapability(account, identifier);
+
+                    ParsedFrame parsedFrame = parseFrame(account, identifier, capability, frame);
+                    parsePayload(account, parsedFrame);
+
+                    // move pointer to the latest readable frame
+                    cache.movePointer(account, identifier);
+
+                    result.add(Hex.encodeHexString(identifier));
+                } catch (NotAuthorizedException e) {
+                    // mark frame as parsed but inaccessible
+                    cache.markAsParsed(account, identifier);
+                }
+            }
+        }
+
+        return result;
+    }
+
+    private Optional<Identifier> getAllAttachments(AuthenticatedAccount account, byte[] identifier, byte[] capability) {
+        if(cache.wasRecursivelyParsed(account, identifier))
+            return Optional.ofNullable(cache.getAllAttachments(account, identifier));
+
+        byte[] frameBytes = blockchain.getFrame(identifier);
+        if (frameBytes == null)
+            return Optional.empty();
+
+        ParsedFrame frame = parseFrame(account, identifier, capability, frameBytes);
+        ParsedPayload payload = parsePayload(account, frame);
+
+        Set<Identifier> attachments = new HashSet<>();
+
+        for(Map.Entry<byte[], byte[]> attachment : payload.getAttachments()) {
+            byte[] attachmentID = attachment.getKey();
+            byte[] attachmentCAP = attachment.getValue();
+            // recursively loop through all attachments
+            getAllAttachments(account, attachmentID, attachmentCAP)
+                    .ifPresent(attachments::add);
+
+            cache.addAttachment(account, attachmentID, identifier);
+            cache.setRecursivelyParsed(account, identifier);
+        }
+
+        return Optional.of(new Identifier(payload.getData(), attachments));
     }
 }

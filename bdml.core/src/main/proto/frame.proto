@@ -9,4 +9,5 @@ message Frame {
 message Payload {
     string data = 1;
     repeated bytes attachedCapability = 2;
+    bytes nonce = 3;
 }

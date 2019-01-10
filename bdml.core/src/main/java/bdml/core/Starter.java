@@ -31,7 +31,7 @@ public class Starter {
 
         secure(keystoreFile, keystorePassword, truststoreFile, truststorePassword);
 
-        // TODO: invalid args cause ugly exception
+        // TODO: exceptions thrown by core proxy are being e.printStackTrace()'ed
 
         CoreProxy coreService = new CoreProxy();
         JsonRpcServer rpcServer = new JsonRpcServer();

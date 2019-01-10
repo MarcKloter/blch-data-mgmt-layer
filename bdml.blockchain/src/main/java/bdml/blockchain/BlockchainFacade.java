@@ -1,12 +1,11 @@
 package bdml.blockchain;
 
+import bdml.blockchain.parity.ParityAdapter;
 import bdml.blockchain.persistence.AccountMap;
 import bdml.services.Blockchain;
 import bdml.services.api.types.Account;
 
-import java.util.Base64;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 /**
  * The BlockchainFacade implements the Blockchain interface and performs context-specific input validation.
@@ -22,7 +21,7 @@ public class BlockchainFacade implements Blockchain {
         String URL = "http://localhost:8545";
         this.CONTRACT_ADDRESS = "0x964bc870a2d3e8bf73d05fa5708039bc1861a118";
         this.accounts = new AccountMap();
-        this.parity = new ParityAdapter(URL);
+        this.parity = new ParityAdapter(URL, CONTRACT_ADDRESS);
     }
 
     @Override
@@ -40,7 +39,6 @@ public class BlockchainFacade implements Blockchain {
         Objects.requireNonNull(identifier, "Parameter 'identifier' cannot be null.");
         Objects.requireNonNull(frame, "Parameter 'frame' cannot be null.");
 
-        // validate input
         if(identifier.length != 32)
             throw new IllegalArgumentException(String.format("The parameter identifier is %d bytes, expected 32 bytes.", identifier.length));
 
@@ -54,17 +52,29 @@ public class BlockchainFacade implements Blockchain {
         if(fromAddress == null)
             throw new IllegalStateException("There was no associated entity found for the given account. Please initialize it by calling createEntity.");
 
-        parity.storeData(fromAddress, account.getPassword(), CONTRACT_ADDRESS, identifier, frame);
+        parity.storeData(fromAddress, account.getPassword(), identifier, frame);
     }
 
     @Override
-    public List<byte[]> getFrames(byte[] identifier) {
+    public byte[] getLatestIdentifier() {
+        return parity.getLatestIdentifier();
+    }
+
+    @Override
+    public byte[] getFrame(byte[] identifier) {
         Objects.requireNonNull(identifier, "Parameter 'identifier' cannot be null.");
 
-        // validate input
         if(identifier.length != 32)
             throw new IllegalArgumentException(String.format("The parameter identifier is %d bytes, expected 32 bytes.", identifier.length));
 
-        return parity.getLogs(identifier);
+        return parity.getFrame(identifier);
+    }
+
+    @Override
+    public Set<Map.Entry<byte[], byte[]>> getFrames(byte[] fromIdentifier) {
+        if(fromIdentifier != null && fromIdentifier.length != 32)
+            throw new IllegalArgumentException(String.format("The parameter fromIdentifier is %d bytes, expected 32 bytes.", fromIdentifier.length));
+
+        return parity.getAllFrames(fromIdentifier);
     }
 }

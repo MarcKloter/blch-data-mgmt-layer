@@ -87,7 +87,7 @@ public class CryptoStoreAdapter implements CryptographicStore {
     public byte[] decrypt(PublicKey publicKey, String secret, byte[] ciphertext) {
         Security.addProvider(new BouncyCastleProvider());
 
-        // get private key persisted for the given public key and secret combination
+        // getCapability private key persisted for the given public key and secret combination
         byte[] decodedKey = keyPairs.get(publicKey, secret);
 
         // split ciphertext into ciphertext and nonce

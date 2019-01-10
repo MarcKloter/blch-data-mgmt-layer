@@ -4,11 +4,10 @@ contract EventStorage {
         // 32 bytes identifier: hash(capability)
         uint indexed identifier,
 
-        // encrypted data
-        bytes payload
+        bytes frame
     );
 
-    function newData(uint identifier, bytes memory payload) public {
-        emit DataEvent(identifier, payload);
+    function newData(uint identifier, bytes memory frame) public {
+        emit DataEvent(identifier, frame);
     }
 }

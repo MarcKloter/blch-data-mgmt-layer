@@ -4,9 +4,10 @@ import bdml.services.api.exceptions.AuthenticationException;
 import bdml.services.api.exceptions.NotAuthorizedException;
 import bdml.services.api.types.Account;
 import bdml.services.api.types.Data;
-import bdml.services.api.types.Filter;
+import bdml.services.api.types.Identifier;
 
 import java.util.List;
+import java.util.Set;
 
 public interface Core {
 	// TODO: javadoc
@@ -27,7 +28,26 @@ public interface Core {
 	String storeData(Data data, Account account, List<String> subjects) throws AuthenticationException;
 	String storeData(Data data, Account account) throws AuthenticationException;
 
-	List<String> listData(Account account, Filter filter) throws AuthenticationException;
+	/**
+	 *
+	 * TODO: does not list attachments "directly accessible"
+	 * @param account
+	 * @return
+	 * @throws AuthenticationException
+	 */
+	Set<String> listData(Account account) throws AuthenticationException;
+
+	/**
+	 * Polling method that returns a list of identifiers of accessible data by the given account since last poll.
+	 * TODO: does not list attachments "directly accessible"
+	 *
+	 * @param account
+	 * @return
+	 * @throws AuthenticationException
+	 */
+	Set<String> listDataChanges(Account account) throws AuthenticationException;
+
+	Identifier listAttachments(Account account, String identifier) throws AuthenticationException;
 
 	/**
 	 *
@@ -39,7 +59,10 @@ public interface Core {
 	 */
 	Data getData(String id, Account account) throws AuthenticationException;
 
-	List<String> listSubjects();
-
+	/**
+	 *
+	 * @param password
+	 * @return
+	 */
 	String createAccount(String password);
 }

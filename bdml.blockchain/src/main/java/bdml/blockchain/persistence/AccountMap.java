@@ -9,19 +9,24 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 
 public class AccountMap {
     // TODO: load FILENAME from configuration file
+    private final String DIRECTORY = "bdml-data";
     private final String FILENAME = "accountMap.json";
+    private final String FILEPATH = DIRECTORY + "/" + FILENAME;
 
     private Map<String, String> accountMap;
 
     public AccountMap() {
         // load persisted accounts
         ObjectMapper mapper = new ObjectMapper();
-        File file = new File(FILENAME);
+        File file = new File(FILEPATH);
         if(file.exists()) {
             try {
                 JsonParser jsonParser = new JsonFactory().createParser(file);
@@ -31,6 +36,16 @@ public class AccountMap {
                 throw new MisconfigurationException(e.getMessage());
             }
         } else {
+            // create path if it doesn't exist
+            Path path = Paths.get(DIRECTORY);
+            if(Files.notExists(path)) {
+                try {
+                    Files.createDirectories(path);
+                } catch (IOException e) {
+                    throw new MisconfigurationException(e.getMessage());
+                }
+            }
+
             this.accountMap = new HashMap<>();
         }
     }
@@ -41,7 +56,7 @@ public class AccountMap {
         // write map to file
         ObjectMapper mapper = new ObjectMapper();
         try {
-            mapper.writeValue(new FileWriter(FILENAME, false), accountMap);
+            mapper.writeValue(new FileWriter(FILEPATH, false), accountMap);
         } catch (IOException e) {
             throw new MisconfigurationException(e.getMessage());
         }

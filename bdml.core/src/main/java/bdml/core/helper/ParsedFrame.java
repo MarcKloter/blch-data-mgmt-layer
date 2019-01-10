@@ -5,12 +5,12 @@ import bdml.core.proto.FrameOuterClass;
 /**
  * Adds meta information to a proto buffer Frame message.
  */
-public class FrameWrapper {
+public class ParsedFrame {
     private byte[] identifier;
     private byte[] capability;
     private FrameOuterClass.Frame frame;
 
-    public FrameWrapper(byte[] identifier, byte[] capability, FrameOuterClass.Frame frame) {
+    public ParsedFrame(byte[] identifier, byte[] capability, FrameOuterClass.Frame frame) {
         this.identifier = identifier;
         this.capability = capability;
         this.frame = frame;

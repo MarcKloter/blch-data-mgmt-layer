@@ -5,12 +5,11 @@ import bdml.core.jsonrpc.exceptions.AuthenticationExceptionWrapper;
 import bdml.core.jsonrpc.exceptions.InvalidParamsException;
 import bdml.core.jsonrpc.exceptions.NotAuthorizedExceptionWrapper;
 import bdml.core.jsonrpc.types.AccountWrapper;
-import bdml.core.jsonrpc.types.DataSkeleton;
-import bdml.core.jsonrpc.types.FilterWrapper;
 import bdml.services.api.Core;
 import bdml.services.api.exceptions.AuthenticationException;
 import bdml.services.api.exceptions.NotAuthorizedException;
 import bdml.services.api.types.Data;
+import bdml.services.api.types.Identifier;
 import com.github.arteam.simplejsonrpc.core.annotation.JsonRpcMethod;
 import com.github.arteam.simplejsonrpc.core.annotation.JsonRpcOptional;
 import com.github.arteam.simplejsonrpc.core.annotation.JsonRpcParam;
@@ -18,6 +17,7 @@ import com.github.arteam.simplejsonrpc.core.annotation.JsonRpcService;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @JsonRpcService
 public class CoreProxy {
@@ -28,7 +28,6 @@ public class CoreProxy {
                             @JsonRpcParam("attachments") @JsonRpcOptional List<String> attachments,
                             @JsonRpcParam("account") AccountWrapper account,
                             @JsonRpcParam("subjects") List<String> subjects) {
-        // TODO: write additional message to data object, currently overwriting the message field
         try {
             return core.storeData(data, attachments, account.unwrap(), subjects);
         } catch (IllegalArgumentException e) {
@@ -41,21 +40,28 @@ public class CoreProxy {
     }
 
     @JsonRpcMethod
-    public List<String> listData(@JsonRpcParam("account") AccountWrapper account,
-                                 @JsonRpcParam("filter") @JsonRpcOptional FilterWrapper filter) {
+    public Set<String> listData(@JsonRpcParam("account") AccountWrapper account) {
         try {
-            return core.listData(account.unwrap(), filter != null ? filter.unwrap() : null);
+            return core.listData(account.unwrap());
         } catch (AuthenticationException e) {
             throw new AuthenticationExceptionWrapper();
         }
     }
 
     @JsonRpcMethod
-    public DataSkeleton getData(@JsonRpcParam("id") String id,
-                                @JsonRpcParam("account") AccountWrapper account) {
+    public Set<String> listDataChanges(@JsonRpcParam("account") AccountWrapper account) {
         try {
-            Data data = core.getData(id, account.unwrap());
-            return Optional.ofNullable(data).map(DataSkeleton::new).orElse(null);
+            return core.listDataChanges(account.unwrap());
+        } catch (AuthenticationException e) {
+            throw new AuthenticationExceptionWrapper();
+        }
+    }
+
+    @JsonRpcMethod
+    public Identifier listAttachments(@JsonRpcParam("account") AccountWrapper account,
+                                      @JsonRpcParam("identifier") String identifier) {
+        try {
+            return core.listAttachments(account.unwrap(), identifier);
         } catch (IllegalArgumentException e) {
             throw new InvalidParamsException(e.getMessage());
         } catch (AuthenticationException e) {
@@ -66,8 +72,17 @@ public class CoreProxy {
     }
 
     @JsonRpcMethod
-    public List<String> listSubjects() {
-        return core.listSubjects();
+    public Data getData(@JsonRpcParam("id") String id,
+                           @JsonRpcParam("account") AccountWrapper account) {
+        try {
+            return core.getData(id, account.unwrap());
+        } catch (IllegalArgumentException e) {
+            throw new InvalidParamsException(e.getMessage());
+        } catch (AuthenticationException e) {
+            throw new AuthenticationExceptionWrapper();
+        } catch (NotAuthorizedException e) {
+            throw new NotAuthorizedExceptionWrapper(e.getMessage());
+        }
     }
 
     @JsonRpcMethod

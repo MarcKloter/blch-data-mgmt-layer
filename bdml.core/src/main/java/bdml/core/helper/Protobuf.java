@@ -19,10 +19,11 @@ public class Protobuf {
      * @param attachedCapabilities
      * @return
      */
-    public static byte[] buildPayload(String data, Collection<byte[]> attachedCapabilities) {
+    public static byte[] buildPayload(String data, Collection<byte[]> attachedCapabilities, byte[] nonce) {
         return FrameOuterClass.Payload.newBuilder()
                 .setData(data)
                 .addAllAttachedCapability(encode(attachedCapabilities))
+                .setNonce(encode(nonce))
                 .build()
                 .toByteArray();
     }
@@ -59,11 +60,11 @@ public class Protobuf {
         }
     }
 
-    public static List<ByteString> encode(Collection<byte[]> c) {
+    private static List<ByteString> encode(Collection<byte[]> c) {
         return c.stream().map(ByteString::copyFrom).collect(Collectors.toList());
     }
 
-    public static ByteString encode(byte[] bytes) {
+    private static ByteString encode(byte[] bytes) {
         return ByteString.copyFrom(bytes);
     }
 
