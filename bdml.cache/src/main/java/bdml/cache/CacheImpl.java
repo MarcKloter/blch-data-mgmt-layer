@@ -18,13 +18,15 @@ public class CacheImpl implements Cache {
     // TODO: load constants from configuration file
     private final String CIPHER = "AES";
     private final String DIRECTORY = "bdml-data";
-    private final int POINTER_INDEX = 1;
+    // fallback value if a cache file was deleted or corrupt, could eg. be set to the block where a smart contract is deployed.
+    private final String FALLBACK_BLOCK = "0";
 
     @Override
-    public void initialize(Account account, byte[] pointer) {
+    public void initialize(Account account, String pointer) {
         try {
             createCache(account, pointer);
         } catch (SQLException e) {
+            e.printStackTrace();
             throw new IllegalStateException("Account has been initialized before.");
         }
     }
@@ -86,8 +88,8 @@ public class CacheImpl implements Cache {
     }
 
     @Override
-    public Set<byte[]> getDirectlyAccessibleIdentifiers(Account account) {
-        String sql = "SELECT identifier FROM DATA";
+    public Set<byte[]> getAllIdentifiers(Account account, boolean includeAttachments) {
+        String sql = "SELECT identifier FROM DATA" + (includeAttachments ? " WHERE attachment = FALSE" : "");
         try(Connection conn = connectOrCreate(account); ResultSet rs = conn.createStatement().executeQuery(sql)) {
             Set<byte[]> result = new HashSet<>();
             while(rs.next())
@@ -100,12 +102,13 @@ public class CacheImpl implements Cache {
     }
 
     @Override
-    public byte[] getPointer(Account account) {
-        String sql = "SELECT identifier FROM PARSED WHERE row_index = ?";
+    public String getPointer(Account account) {
+        String sql = "SELECT value FROM VARIABLES WHERE key = ?";
         try(Connection conn = connectOrCreate(account); PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setInt(1, POINTER_INDEX);
+            stmt.setString(1, "pointer");
             try (ResultSet rs = stmt.executeQuery()) {
-                return (rs.next()) ? rs.getBytes("identifier") : null;
+                rs.next();
+                return rs.getString("value");
             }
         } catch (SQLException e) {
             throw new MisconfigurationException(e.getMessage());
@@ -113,39 +116,12 @@ public class CacheImpl implements Cache {
     }
 
     @Override
-    public void movePointer(Account account, byte[] identifier) {
-        String sql = "UPDATE PARSED SET identifier = ? WHERE row_index = ?";
+    public void setPointer(Account account, String pointer) {
+        String sql = "UPDATE VARIABLES SET value = ? WHERE key = ?";
         try(Connection conn = connectOrCreate(account); PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setBytes(1, identifier);
-            stmt.setInt(2, POINTER_INDEX);
+            stmt.setString(1, pointer);
+            stmt.setString(2, "pointer");
             stmt.executeUpdate();
-        } catch (SQLException e) {
-            throw new MisconfigurationException(e.getMessage());
-        }
-    }
-
-    @Override
-    public void markAsParsed(Account account, byte[] identifier) {
-        if(wasParsedBefore(account, identifier))
-            return;
-
-        String sql = "INSERT INTO PARSED(identifier) VALUES(?)";
-        try(Connection conn = connectOrCreate(account); PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setBytes(1, identifier);
-            stmt.executeUpdate();
-        } catch (SQLException e) {
-            throw new MisconfigurationException(e.getMessage());
-        }
-    }
-
-    @Override
-    public boolean wasParsedBefore(Account account, byte[] identifier) {
-        String sql = "SELECT identifier FROM PARSED WHERE identifier = ?";
-        try(Connection conn = connectOrCreate(account); PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setBytes(1, identifier);
-            try (ResultSet rs = stmt.executeQuery()) {
-                return rs.next();
-            }
         } catch (SQLException e) {
             throw new MisconfigurationException(e.getMessage());
         }
@@ -223,7 +199,7 @@ public class CacheImpl implements Cache {
         } catch (SQLException e1) {
             try {
                 // create an empty cache with a pointer to null
-                return createCache(account, null);
+                return createCache(account, FALLBACK_BLOCK);
             } catch (SQLException e2) {
                 throw new MisconfigurationException(e2.getMessage());
             }
@@ -236,13 +212,12 @@ public class CacheImpl implements Cache {
 
         // combination of file password (used for encryption) and user password
         String password = Util.sha256(db + pwd) + " " + pwd;
-
-        String url = String.format("jdbc:h2:./%s/%s;CIPHER=%s", DIRECTORY, db, CIPHER);
-
+        // using h2 in auto mixed mode
+        String url = String.format("jdbc:h2:./%s/%s;CIPHER=%s;AUTO_SERVER=TRUE", DIRECTORY, db, CIPHER);
         return DriverManager.getConnection(url + params, db, password);
     }
 
-    private Connection createCache(Account account, byte[] pointer) throws SQLException {
+    private Connection createCache(Account account, String pointer) throws SQLException {
         // only allow the creation of non-existent databases
         Connection conn = connect(account, ";IFEXISTS=FALSE");
 
@@ -250,9 +225,10 @@ public class CacheImpl implements Cache {
         RunScript.execute(conn, new InputStreamReader(getClass().getResourceAsStream("/schema.sql")));
 
         // set index = 0 to the pointer
-        String sql = "INSERT INTO PARSED(identifier) VALUES(?)";
+        String sql = "INSERT INTO VARIABLES(key, value) VALUES(?, ?)";
         PreparedStatement stmt = conn.prepareStatement(sql);
-        stmt.setBytes(1, pointer);
+        stmt.setString(1, "pointer");
+        stmt.setString(2, pointer);
         stmt.executeUpdate();
 
         return conn;
