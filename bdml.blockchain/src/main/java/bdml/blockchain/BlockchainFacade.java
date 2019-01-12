@@ -4,22 +4,28 @@ import bdml.blockchain.parity.ParityAdapter;
 import bdml.blockchain.persistence.AccountMap;
 import bdml.services.Blockchain;
 import bdml.services.api.types.Account;
+import bdml.services.exceptions.MisconfigurationException;
+import bdml.services.helper.FrameListener;
 
+import java.math.BigInteger;
+import java.net.ConnectException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.*;
 
 /**
  * The BlockchainFacade implements the Blockchain interface and performs context-specific input validation.
  */
 public class BlockchainFacade implements Blockchain {
-    private final String CONTRACT_ADDRESS;
+    // TODO: load from config file
+    private final String CONTRACT_ADDRESS = "0x964bc870a2d3e8bf73d05fa5708039bc1861a118";
+    private final String URL = "http://localhost:8545";
+    private final String WEBSOCKET_URI = "ws://localhost:8546";
 
     private AccountMap accounts;
     private ParityAdapter parity;
 
     public BlockchainFacade() {
-        // TODO: load from config file
-        String URL = "http://localhost:8545";
-        this.CONTRACT_ADDRESS = "0x964bc870a2d3e8bf73d05fa5708039bc1861a118";
         this.accounts = new AccountMap();
         this.parity = new ParityAdapter(URL, CONTRACT_ADDRESS);
     }
@@ -56,8 +62,8 @@ public class BlockchainFacade implements Blockchain {
     }
 
     @Override
-    public byte[] getLatestIdentifier() {
-        return parity.getLatestIdentifier();
+    public String blockPointer() {
+        return parity.blockNumber().toString(16);
     }
 
     @Override
@@ -71,10 +77,32 @@ public class BlockchainFacade implements Blockchain {
     }
 
     @Override
-    public Set<Map.Entry<byte[], byte[]>> getFrames(byte[] fromIdentifier) {
-        if(fromIdentifier != null && fromIdentifier.length != 32)
-            throw new IllegalArgumentException(String.format("The parameter fromIdentifier is %d bytes, expected 32 bytes.", fromIdentifier.length));
+    public LinkedHashSet<Map.Entry<byte[], byte[]>> getFrames(String fromBlock) {
+        Objects.requireNonNull(fromBlock, "Parameter 'fromBlock' cannot be null.");
 
-        return parity.getAllFrames(fromIdentifier);
+        BigInteger from = new BigInteger(fromBlock, 16);
+        BigInteger current = parity.blockNumber();
+        if(from.compareTo(current) > 0)
+            throw new IllegalArgumentException("The given 'fromBlock' does not exist.");
+
+        return parity.getAllFrames(from);
+    }
+
+    @Override
+    public void startFrameListener(FrameListener frameListener) {
+        URI webSocketURI;
+        try {
+            webSocketURI = new URI(WEBSOCKET_URI);
+            parity.startFrameListener(webSocketURI, frameListener);
+        } catch (URISyntaxException e) {
+            throw new MisconfigurationException(String.format("WebSocket URI malformed: %s", e.getMessage()));
+        } catch (ConnectException e) {
+            throw new MisconfigurationException(String.format("Cannot connect to WebSocket: %s", e.getMessage()));
+        }
+    }
+
+    @Override
+    public void stopFrameListener() {
+        parity.stopFrameListener();
     }
 }

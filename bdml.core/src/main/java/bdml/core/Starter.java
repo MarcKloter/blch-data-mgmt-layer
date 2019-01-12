@@ -1,6 +1,7 @@
 package bdml.core;
 
 import bdml.core.jsonrpc.CoreProxy;
+import bdml.core.websocket.CoreWebSocket;
 import com.github.arteam.simplejsonrpc.server.JsonRpcServer;
 import org.apache.commons.cli.*;
 
@@ -36,16 +37,18 @@ public class Starter {
         CoreProxy coreService = new CoreProxy();
         JsonRpcServer rpcServer = new JsonRpcServer();
 
+        // WebSocket endpoint
+        webSocket("/dataListener", CoreWebSocket.class);
+
+        System.out.println(String.format("WebSocket endpoint listening on wss://localhost:%d/dataListener", port));
+
         // HTTPS POST routing
         post("/", (request, response) -> {
             String jsonRequest = request.body();
             return rpcServer.handle(jsonRequest, coreService);
         });
 
-        // TODO: websocket endpoint
-        // TODO: HTTPS extension routing
-
-        System.out.println("JSON-RPC API endpoint listening on https://localhost:" + port);
+        System.out.println(String.format("JSON-RPC API endpoint listening on https://localhost:%d", port));
     }
 
     /**

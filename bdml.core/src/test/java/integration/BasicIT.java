@@ -29,7 +29,7 @@ public class BasicIT {
 
     @BeforeAll
     public void setup() {
-        this.core = new CoreService();
+        this.core = CoreService.getInstance();
 
         this.account1 = new Account(core.createAccount(PASSWORD_1), PASSWORD_1);
         this.account2 = new Account(core.createAccount(PASSWORD_2), PASSWORD_2);

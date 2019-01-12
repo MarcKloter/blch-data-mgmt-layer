@@ -3,7 +3,6 @@ package bdml.core.helper;
 import org.apache.commons.codec.binary.Hex;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -29,7 +28,7 @@ public class ParsedPayload {
         return attachments.entrySet();
     }
 
-    public List<String> getIdentifiersHexString() {
-        return attachments.keySet().stream().map(Hex::encodeHexString).collect(Collectors.toList());
+    public Set<String> getIdentifiersHexString() {
+        return attachments.keySet().stream().map(Hex::encodeHexString).collect(Collectors.toSet());
     }
 }

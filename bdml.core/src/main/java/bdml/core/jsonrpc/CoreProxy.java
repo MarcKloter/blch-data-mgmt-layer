@@ -21,13 +21,13 @@ import java.util.Set;
 
 @JsonRpcService
 public class CoreProxy {
-    private Core core = new CoreService();
+    private Core core = CoreService.getInstance();
 
     @JsonRpcMethod
     public String storeData(@JsonRpcParam("data") String data,
-                            @JsonRpcParam("attachments") @JsonRpcOptional List<String> attachments,
+                            @JsonRpcParam("attachments") @JsonRpcOptional Set<String> attachments,
                             @JsonRpcParam("account") AccountWrapper account,
-                            @JsonRpcParam("subjects") List<String> subjects) {
+                            @JsonRpcParam("subjects") Set<String> subjects) {
         try {
             return core.storeData(data, attachments, account.unwrap(), subjects);
         } catch (IllegalArgumentException e) {

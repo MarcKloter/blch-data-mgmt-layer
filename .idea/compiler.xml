@@ -10,7 +10,6 @@
         <module name="bdml.cache" />
         <module name="bdml.core" />
         <module name="bdml.cryptostore" />
-        <module name="bdml.ipfs" />
         <module name="bdml.keyserver" />
         <module name="bdml.services" />
       </profile>

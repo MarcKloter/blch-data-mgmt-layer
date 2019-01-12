@@ -3,6 +3,7 @@ package bdml.services;
 import bdml.services.api.types.Account;
 import bdml.services.api.types.Identifier;
 
+import java.math.BigInteger;
 import java.util.Set;
 
 public interface Cache {
@@ -12,10 +13,10 @@ public interface Cache {
      * Creates a new cache for the given account at the provided pointer.
      *
      * @param account account to create the cache for
-     * @param pointer latest 32 bytes identifier to initialize the cache pointer
+     * @param pointer block number to initialize the cache pointer at
      * @throws IllegalStateException if {@code account} was already initialized.
      */
-    void initialize(Account account, byte[] pointer);
+    void initialize(Account account, String pointer);
 
     /**
      *
@@ -34,19 +35,15 @@ public interface Cache {
      */
     byte[] getCapability(Account account, byte[] identifier);
 
+    Set<byte[]> getAllIdentifiers(Account account, boolean includeAttachments);
+
     void setRecursivelyParsed(Account account, byte[] identifier);
 
     boolean wasRecursivelyParsed(Account account, byte[] identifier);
 
-    Set<byte[]> getDirectlyAccessibleIdentifiers(Account account);
+    String getPointer(Account account);
 
-    byte[] getPointer(Account account);
-
-    void movePointer(Account account, byte[] identifier);
-
-    void markAsParsed(Account account, byte[] identifier);
-
-    boolean wasParsedBefore(Account account, byte[] identifier);
+    void setPointer(Account account, String pointer);
 
     void addAttachment(Account account, byte[] identifier, byte[] attachedTo);
 

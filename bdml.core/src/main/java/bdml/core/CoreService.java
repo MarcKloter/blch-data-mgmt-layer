@@ -1,9 +1,12 @@
 package bdml.core;
 
+import java.math.BigInteger;
 import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.util.*;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 import bdml.blockchain.BlockchainFacade;
@@ -18,10 +21,12 @@ import bdml.services.CryptographicStore;
 import bdml.services.KeyServer;
 import bdml.services.api.exceptions.AuthenticationException;
 import bdml.services.api.exceptions.NotAuthorizedException;
+import bdml.services.api.helper.DataListener;
 import bdml.services.api.types.Account;
 import bdml.services.api.types.Data;
 import bdml.services.api.Core;
 import bdml.services.api.types.Identifier;
+import bdml.services.helper.FrameListener;
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
 
@@ -29,17 +34,59 @@ public class CoreService implements Core {
     // TODO: load constants from configuration file
     private final int VERSION = 1;
     private final int NONCE_BYTES = 4;
+    private final int LISTENER_HANDLE_BYTES = 8;
 
     private Blockchain blockchain = new BlockchainFacade();
     private KeyServer keyServer = new KeyServerAdapter();
     private CryptographicStore cryptoStore = new CryptoStoreAdapter();
     private Cache cache = new CacheImpl();
 
+    private ConcurrentHashMap<AuthenticatedAccount, ConcurrentHashMap<String, DataListener>> handleToListener = new ConcurrentHashMap<>();
+    private AtomicBoolean frameListenerRunning = new AtomicBoolean(false);
+
+    private CoreService() {
+
+    }
+
+    // initialize-on-demand holder
+    private static class Holder {
+        private static final CoreService INSTANCE = new CoreService();
+    }
+
+    public static CoreService getInstance() {
+        return Holder.INSTANCE;
+    }
+
     //region Core interface implementation
     //------------------------------------------------------------------------------------------------------------------
+    @Override
+    public String createAccount(String password) {
+        Assert.requireNonEmpty(password, "password");
+
+        PublicKey publicKey = cryptoStore.generateKeyPair(password);
+
+        // take 160 LSB in hex representation as account identifier
+        byte[] pkBytes = publicKey.getEncoded();
+        byte[] idBytes = Arrays.copyOfRange(pkBytes, pkBytes.length - 20, pkBytes.length);
+        String identifier = Hex.encodeHexString(idBytes);
+
+        Account account = new Account(identifier, password);
+
+        keyServer.registerKey(identifier, publicKey);
+
+        blockchain.createEntity(account);
+        // TODO: createEntity return the address to transfer coins (not dev chain) - what to do?
+
+        // pointer at which the new account will start looking for new frames
+        String pointer = blockchain.blockPointer();
+
+        cache.initialize(account, pointer);
+
+        return identifier;
+    }
 
     @Override
-    public String storeData(String data, List<String> attachments, Account account, List<String> subjects) throws AuthenticationException {
+    public String storeData(String data, Set<String> attachments, Account account, Set<String> subjects) throws AuthenticationException {
         Assert.requireNonEmpty(data, "data");
         AuthenticatedAccount caller = authenticate(account);
 
@@ -64,7 +111,7 @@ public class CoreService implements Core {
     }
 
     @Override
-    public String storeData(String data, Account account, List<String> subjects) throws AuthenticationException {
+    public String storeData(String data, Account account, Set<String> subjects) throws AuthenticationException {
         return storeData(data, null, account, subjects);
     }
 
@@ -74,7 +121,7 @@ public class CoreService implements Core {
     }
 
     @Override
-    public String storeData(Data data, Account account, List<String> subjects) throws AuthenticationException {
+    public String storeData(Data data, Account account, Set<String> subjects) throws AuthenticationException {
         return storeData(data.getData(), data.getAttachments(), account, subjects);
     }
 
@@ -89,7 +136,7 @@ public class CoreService implements Core {
 
         pollNewFrames(caller);
 
-        Set<byte[]> identifiers = cache.getDirectlyAccessibleIdentifiers(caller);
+        Set<byte[]> identifiers = cache.getAllIdentifiers(caller, false);
         return identifiers.stream().map(Hex::encodeHexString).collect(Collectors.toSet());
     }
 
@@ -118,8 +165,6 @@ public class CoreService implements Core {
         byte[] idBytes = validateIdentifier(identifier);
         AuthenticatedAccount caller = authenticate(account);
 
-        // TODO: optimize getData by checking marked frames (MUST ENSURE THAT ATTACHMENTS ARE PROPERLY REMOVED FROM PARSED TABLE)
-
         byte[] frameBytes = blockchain.getFrame(idBytes);
         if (frameBytes == null)
             return null;
@@ -133,31 +178,39 @@ public class CoreService implements Core {
     }
 
     @Override
-    public String createAccount(String password) {
-        Assert.requireNonEmpty(password, "password");
+    public String registerDataListener(Account account, DataListener dataListener) throws AuthenticationException {
+        AuthenticatedAccount caller = authenticate(account);
 
-        PublicKey publicKey = cryptoStore.generateKeyPair(password);
+        byte[] handleBytes = new byte[LISTENER_HANDLE_BYTES];
+        new SecureRandom().nextBytes(handleBytes);
+        String handle = Hex.encodeHexString(handleBytes);
 
-        // take 160 LSB in hex representation as account identifier
-        byte[] pkBytes = publicKey.getEncoded();
-        byte[] idBytes = Arrays.copyOfRange(pkBytes, pkBytes.length - 20, pkBytes.length);
-        String identifier = Hex.encodeHexString(idBytes);
+        ConcurrentHashMap<String, DataListener> accountListeners = handleToListener.computeIfAbsent(caller, key -> new ConcurrentHashMap<>());
 
-        Account account = new Account(identifier, password);
+        accountListeners.putIfAbsent(handle, dataListener);
 
-        keyServer.registerKey(identifier, publicKey);
+        if(frameListenerRunning.compareAndSet(false, true))
+            blockchain.startFrameListener(new CoreFrameListener());
 
-        blockchain.createEntity(account);
-        // TODO: createEntity return the address to transfer coins (not dev chain) - what to do?
-
-        // pointer at which the new account will start looking for new frames
-        byte[] pointer = blockchain.getLatestIdentifier();
-
-        cache.initialize(account, pointer);
-
-        return identifier;
+        return handle;
     }
 
+    @Override
+    public void unregisterDataListener(Account account, String handle) throws AuthenticationException {
+        AuthenticatedAccount caller = authenticate(account);
+
+        ConcurrentHashMap<String, DataListener> accountListeners = handleToListener.getOrDefault(caller, null);
+
+        // check whether the handle to remove was registered by the caller
+        if(accountListeners != null) {
+            accountListeners.remove(handle);
+            if(accountListeners.isEmpty())
+                handleToListener.remove(caller);
+
+            if(frameListenerRunning.compareAndSet(true, false))
+                blockchain.stopFrameListener();
+        }
+    }
     //------------------------------------------------------------------------------------------------------------------
     //endregion
 
@@ -200,18 +253,13 @@ public class CoreService implements Core {
         }
     }
 
-    private Set<byte[]> lookupCapabilities(AuthenticatedAccount account, Collection<String> identifiers) {
-        // create empty list if no identifiers were provided
-        identifiers = Optional.ofNullable(identifiers).orElse(new ArrayList<>());
-
-        Set<byte[]> capabilities = new HashSet<>();
-        identifiers.stream()
+    private Set<byte[]> lookupCapabilities(AuthenticatedAccount account, Set<String> identifiers) {
+        return Optional.ofNullable(identifiers).orElse(Collections.emptySet())
+                .stream()
                 .filter(Objects::nonNull)
-                .distinct() // distinct to avoid unnecessary operations
                 .map(this::validateIdentifier)
                 .map(id -> lookupCapability(account, id))
-                .collect(Collectors.toCollection(() -> capabilities));
-        return capabilities;
+                .collect(Collectors.toSet());
     }
 
     private byte[] lookupCapability(AuthenticatedAccount account, byte[] identifier) {
@@ -233,19 +281,14 @@ public class CoreService implements Core {
     /**
      * Resolves the given addresses to public keys using the keyserver.
      *
-     * @param subjects list of addresses
-     * @return Set of distinct public keys corresponding to the given subjects.
+     * @param subjects set of addresses
+     * @return Set of public keys corresponding to the given subjects.
      */
-    private Set<PublicKey> resolveAllSubjects(List<String> subjects) {
-        // create empty list if no subjects are present
-        subjects = Optional.ofNullable(subjects).orElse(new ArrayList<>());
-
-        Set<PublicKey> resolvedSubjects = new HashSet<>();
-        subjects.stream()
-                .distinct() // distinct to avoid unnecessary operations
+    private Set<PublicKey> resolveAllSubjects(Set<String> subjects) {
+        return Optional.ofNullable(subjects).orElse(Collections.emptySet())
+                .stream()
                 .map(this::resolveSubject)
-                .collect(Collectors.toCollection(() -> resolvedSubjects));
-        return resolvedSubjects;
+                .collect(Collectors.toSet());
     }
 
     /**
@@ -382,8 +425,9 @@ public class CoreService implements Core {
     }
 
     private Set<String> pollNewFrames(AuthenticatedAccount account) {
-        byte[] pointer = cache.getPointer(account);
-        Set<Map.Entry<byte[], byte[]>> newFrames = blockchain.getFrames(pointer);
+        String currentBlock = blockchain.blockPointer();
+        String lastBlock = cache.getPointer(account);
+        Set<Map.Entry<byte[], byte[]>> newFrames = blockchain.getFrames(lastBlock);
 
         Set<String> result = new HashSet<>();
 
@@ -391,25 +435,21 @@ public class CoreService implements Core {
             byte[] identifier = entry.getKey();
             byte[] frame = entry.getValue();
 
-            // check whether frame is was parsed before and cannot be read (otherwise pointer would have moved
-            if(!cache.wasParsedBefore(account, identifier)) {
-                try {
-                    // check whether the data was previously cached through getData or storeData
-                    byte[] capability = cache.getCapability(account, identifier);
+            try {
+                // check whether the data was previously cached through getData or storeData
+                byte[] capability = cache.getCapability(account, identifier);
 
-                    ParsedFrame parsedFrame = parseFrame(account, identifier, capability, frame);
-                    parsePayload(account, parsedFrame);
+                ParsedFrame parsedFrame = parseFrame(account, identifier, capability, frame);
+                parsePayload(account, parsedFrame);
 
-                    // move pointer to the latest readable frame
-                    cache.movePointer(account, identifier);
-
-                    result.add(Hex.encodeHexString(identifier));
-                } catch (NotAuthorizedException e) {
-                    // mark frame as parsed but inaccessible
-                    cache.markAsParsed(account, identifier);
-                }
+                result.add(Hex.encodeHexString(identifier));
+            } catch (NotAuthorizedException e) {
+                // the frame was not addressed to the given account nor a known attachment
             }
         }
+
+        // move pointer to the current block
+        cache.setPointer(account, currentBlock);
 
         return result;
     }
@@ -439,5 +479,29 @@ public class CoreService implements Core {
         }
 
         return Optional.of(new Identifier(payload.getData(), attachments));
+    }
+
+    public class CoreFrameListener implements FrameListener {
+        @Override
+        public void update(byte[] idBytes, byte[] frame) {
+            for(AuthenticatedAccount account : handleToListener.keySet()) {
+                // TODO: refactor (same as pollNew)
+                // check whether the data was previously cached through getData or storeData
+                byte[] capability = cache.getCapability(account, idBytes);
+
+                ParsedFrame parsedFrame = parseFrame(account, idBytes, capability, frame);
+                parsePayload(account, parsedFrame);
+
+                String identifier = Hex.encodeHexString(idBytes);
+
+                ConcurrentHashMap<String, DataListener> accountListeners = handleToListener.getOrDefault(account, null);
+                if(accountListeners != null && !accountListeners.isEmpty()) {
+                    for(DataListener dataListener : accountListeners.values()) {
+                        dataListener.update(identifier);
+                    }
+                }
+            }
+            System.out.println("CoreFrameListener: " + Hex.encodeHexString(idBytes));
+        }
     }
 }

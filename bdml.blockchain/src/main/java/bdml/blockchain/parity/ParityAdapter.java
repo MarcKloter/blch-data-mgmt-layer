@@ -1,20 +1,30 @@
 package bdml.blockchain.parity;
 
 import bdml.blockchain.web3j.EventStorage;
-import com.fasterxml.jackson.databind.ser.std.MapSerializer;
+import bdml.services.helper.FrameListener;
+import io.reactivex.Flowable;
+import io.reactivex.disposables.Disposable;
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
 import org.web3j.abi.EventEncoder;
 import org.web3j.abi.EventValues;
+import org.web3j.abi.FunctionReturnDecoder;
+import org.web3j.abi.datatypes.Type;
+import org.web3j.protocol.Web3j;
 import org.web3j.protocol.admin.Admin;
 import org.web3j.protocol.admin.methods.response.NewAccountIdentifier;
 import org.web3j.protocol.core.DefaultBlockParameter;
 import org.web3j.protocol.core.DefaultBlockParameterName;
 import org.web3j.protocol.core.DefaultBlockParameterNumber;
 import org.web3j.protocol.core.methods.request.EthFilter;
+import org.web3j.protocol.core.methods.response.EthBlockNumber;
 import org.web3j.protocol.core.methods.response.EthLog;
 import org.web3j.protocol.core.methods.response.TransactionReceipt;
 import org.web3j.protocol.http.HttpService;
+import org.web3j.protocol.websocket.WebSocketClient;
+import org.web3j.protocol.websocket.WebSocketService;
+import org.web3j.protocol.websocket.events.Log;
+import org.web3j.protocol.websocket.events.LogNotification;
 import org.web3j.tx.Contract;
 import org.web3j.tx.TransactionManager;
 import org.web3j.tx.gas.ContractGasProvider;
@@ -22,14 +32,18 @@ import org.web3j.tx.gas.StaticGasProvider;
 
 import java.io.IOException;
 import java.math.BigInteger;
+import java.net.ConnectException;
+import java.net.URI;
 import java.util.*;
 import java.util.stream.Collectors;
 
 public class ParityAdapter {
     private final String HEX_PREFIX = "0x";
-    private Admin web3j;
     private final String EVENT_TOPIC = EventEncoder.encode(EventStorage.DATAEVENT_EVENT);
     private final List<String> CONTRACT_ADDRESS;
+
+    private Admin web3j;
+    private Disposable eventSubscription;
 
     public ParityAdapter(String url, String contractAddress) {
         this.web3j = Admin.build(new HttpService(url));
@@ -38,6 +52,7 @@ public class ParityAdapter {
 
     /**
      * Creates a new account using personal_newAccount.
+     * https://wiki.parity.io/JSONRPC-personal-module#personal_newaccount
      *
      * @param password Password for the new account.
      * @return The address of the new account.
@@ -54,6 +69,7 @@ public class ParityAdapter {
 
     /**
      * Calls the newData method of the deployed smart contract using personal_sendTransaction.
+     * https://wiki.parity.io/JSONRPC-personal-module#personal_sendtransaction
      *
      * @param fromAddress the address to send the transaction from
      * @param password passphrase to unlock the fromAddress account
@@ -83,6 +99,7 @@ public class ParityAdapter {
 
     /**
      * Queries event logs for an indexed identifier using eth_getLogs.
+     * https://wiki.parity.io/JSONRPC-eth-module#eth_getlogs
      *
      * @param identifier 32 bytes indexed event identifier
      * @return Byte array containing the frame within the event log matching the given {@code identifier} or null.
@@ -96,26 +113,79 @@ public class ParityAdapter {
         return results.stream().findFirst().map(this::retrieveFrame).orElse(null);
     }
 
-    public Set<Map.Entry<byte[], byte[]>> getAllFrames(byte[] fromIdentifier) {
-        // first we need to retrieve the block number of the log containing the frame identified by fromIdentifier
-        List<EthLog.LogResult> identifiedLogs = getLogs(fromIdentifier, null, null, null);
+    /**
+     * Queries all event logs newer than {@code fromBlock} using eth_getLogs.
+     * https://wiki.parity.io/JSONRPC-eth-module#eth_getlogs
+     *
+     * @param fromBlock block number to start receiving frames after
+     * @return Ordered set containing all identifier/frame pairs stored after the {@code fromBlock} in chronological
+     * order (oldest first).
+     */
+    public LinkedHashSet<Map.Entry<byte[], byte[]>> getAllFrames(BigInteger fromBlock) {
+        List<EthLog.LogResult> allLogsNewerThanBlockNumber = getLogs(null, fromBlock, null, null);
 
-        // return null if the identifier does not exist
-        if(identifiedLogs.isEmpty())
-            return null;
-
-        // the results are chronologically ordered (oldest first)
-        EthLog.LogObject log = castToLogObject(identifiedLogs.get(0));
-        BigInteger blockNumber = log.getBlockNumber();
-
-        List<EthLog.LogResult> allLogsNewerThanBlockNumber = getLogs(null, blockNumber, null, null);
-
-        return allLogsNewerThanBlockNumber.stream()
+        LinkedHashSet<Map.Entry<byte[], byte[]>> result = new LinkedHashSet<>();
+        allLogsNewerThanBlockNumber.stream()
                 .map(this::castToLogObject)
-                .filter(logObject -> !logObject.getBlockNumber().equals(blockNumber)) // remove all logs of the fromBlock
+                .filter(logObject -> !logObject.getBlockNumber().equals(fromBlock)) // remove all logs of the fromBlock
                 .map(this::toIdentifierFramePair)
                 .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
+                .collect(Collectors.toCollection(() -> result));
+        return result;
+    }
+
+    /**
+     * Returns the number of the most recent block using eth_blockNumber.
+     * https://wiki.parity.io/JSONRPC-eth-module#eth_blocknumber
+     *
+     * @return BigInteger of the current block number the client is on.
+     */
+    public BigInteger blockNumber() {
+        try {
+            EthBlockNumber blockNumber = web3j.ethBlockNumber().send();
+            return blockNumber.getBlockNumber();
+        } catch (IOException e) {
+            // TODO: handle exception
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     *
+     * @param webSocketURI
+     * @param frameListener
+     * @throws ConnectException
+     */
+    public void startFrameListener(URI webSocketURI, FrameListener frameListener) throws ConnectException {
+        if(this.eventSubscription != null)
+            return;
+
+        WebSocketClient client = new WebSocketClient(webSocketURI);
+        WebSocketService service = new WebSocketService(client, false);
+        service.connect();
+        Web3j web3j = Web3j.build(service);
+        List<String> topics = Collections.singletonList(EVENT_TOPIC);
+        Flowable<LogNotification> notifications = web3j.logsNotifications(CONTRACT_ADDRESS, topics);
+        this.eventSubscription = notifications.subscribe(logNotification -> {
+            // TODO: refactor
+            Log log = logNotification.getParams().getResult();
+            String identifier = log.getTopics().get(1);
+            identifier = identifier.replaceFirst(HEX_PREFIX, "");
+            byte[] idBytes = Hex.decodeHex(identifier);
+            List<Type> nonIndexedValues = FunctionReturnDecoder.decode(log.getData(), EventStorage.DATAEVENT_EVENT.getNonIndexedParameters());
+            byte[] frame = (byte[]) nonIndexedValues.get(0).getValue();
+            frameListener.update(idBytes, frame);
+        });
+    }
+
+    /**
+     *
+     */
+    public void stopFrameListener() {
+        if(this.eventSubscription != null && !this.eventSubscription.isDisposed()) {
+            this.eventSubscription.dispose();
+            this.eventSubscription = null;
+        }
     }
 
     private Map.Entry<byte[], byte[]> toIdentifierFramePair(EthLog.LogObject logObject) {
@@ -131,21 +201,7 @@ public class ParityAdapter {
         return new AbstractMap.SimpleImmutableEntry<>(idBytes, frame);
     }
 
-    public byte[] getLatestIdentifier() {
-        // limit the result to 1, which will be the latest
-        List<EthLog.LogResult> results = getLogs(null, null, null, 1);
-
-        if(results.isEmpty())
-            return null;
-
-        EventValues log = parseLogResult(results.get(0));
-
-        // the identifier is the only explicitly indexed value (event topic is implicit)
-        BigInteger identifier = (BigInteger) log.getIndexedValues().get(0).getValue();
-        return identifier.toByteArray();
-    }
-
-    private List<EthLog.LogResult> getLogs( byte[] identifier, BigInteger fromBlock, BigInteger toBlock, Integer limit) {
+    private List<EthLog.LogResult> getLogs(byte[] identifier, BigInteger fromBlock, BigInteger toBlock, Integer limit) {
         DefaultBlockParameter from = (fromBlock != null) ? new DefaultBlockParameterNumber(fromBlock) : DefaultBlockParameterName.EARLIEST;
         DefaultBlockParameter to = (toBlock != null) ? new DefaultBlockParameterNumber(toBlock) : DefaultBlockParameterName.LATEST;
 

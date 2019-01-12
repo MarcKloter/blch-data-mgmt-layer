@@ -1,11 +1,10 @@
 package bdml.services;
 
 import bdml.services.api.types.Account;
+import bdml.services.helper.FrameListener;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.math.BigInteger;
+import java.util.*;
 
 public interface Blockchain {
     // TODO: javadoc
@@ -31,11 +30,11 @@ public interface Blockchain {
     void storeFrame(Account account, byte[] identifier, byte[] frame);
 
     /**
-     * Returns the identifier of the most recently added frame.
+     * Returns a pointer to the most recent block (eg. number or hash).
      *
-     * @return Last added identifier or null if there are no frames.
+     * @return Pointer of the current block the client is on.
      */
-    byte[] getLatestIdentifier();
+    String blockPointer();
 
     /**
      * Returns the frame previously stored using the given identifier.
@@ -46,14 +45,18 @@ public interface Blockchain {
     byte[] getFrame(byte[] identifier);
 
     /**
-     * Returns all frames stored subsequent to the frame identified by the given {@code fromIdentifier}.
-     * All frames stored in the block of {@code fromIdentifier} are excluded from the result.
-     * Passing {@code null} for {@code fromIdentifier} will default to the earliest frame (inclusive).
+     * Returns all frames stored subsequent to the {@code fromBlock}.
+     * All frames stored in the {@code fromBlock} are excluded from the result.
      *
-     * @param fromIdentifier unique identifier of previously stored data
-     * @return Ordered list containing all identifier and frame pairs stored after the block of {@code fromIdentifier}
-     * in chronological order (oldest first) or {@code null} if {@code fromIdentifier} does not exist.
+     * @apiNote LinkedHashSet is used to retain insertion order, which SortedSet would not support.
+     *
+     * @param fromBlock block pointer to start receiving frames after
+     * @return Ordered set containing all identifier/frame pairs stored after the {@code fromBlock}
+     * in chronological order (oldest first).
      */
-    Set<Map.Entry<byte[], byte[]>> getFrames(byte[] fromIdentifier);
+    LinkedHashSet<Map.Entry<byte[], byte[]>> getFrames(String fromBlock);
 
+    void startFrameListener(FrameListener frameListener);
+
+    void stopFrameListener();
 }

@@ -1,12 +1,12 @@
 package bdml.services.api.types;
 
-import java.util.List;
+import java.util.Set;
 
 public class Data {
     private final String data;
-    private final List<String> attachments;
+    private final Set<String> attachments;
 
-    public Data(String data, List<String> attachments) {
+    public Data(String data, Set<String> attachments) {
         this.data = data;
         this.attachments = attachments;
     }
@@ -15,7 +15,7 @@ public class Data {
         return data;
     }
 
-    public List<String> getAttachments() {
+    public Set<String> getAttachments() {
         return attachments;
     }
 }

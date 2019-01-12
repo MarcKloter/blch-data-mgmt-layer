@@ -18,8 +18,4 @@ public class AuthenticatedAccount extends Account {
     public PublicKey getPublicKey() {
         return publicKey;
     }
-
-    public void setPublicKey(PublicKey publicKey) {
-        this.publicKey = publicKey;
-    }
 }

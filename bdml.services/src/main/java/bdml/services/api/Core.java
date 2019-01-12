@@ -2,15 +2,21 @@ package bdml.services.api;
 
 import bdml.services.api.exceptions.AuthenticationException;
 import bdml.services.api.exceptions.NotAuthorizedException;
+import bdml.services.api.helper.DataListener;
 import bdml.services.api.types.Account;
 import bdml.services.api.types.Data;
 import bdml.services.api.types.Identifier;
-
-import java.util.List;
 import java.util.Set;
 
 public interface Core {
 	// TODO: javadoc
+
+	/**
+	 *
+	 * @param password
+	 * @return
+	 */
+	String createAccount(String password);
 
 	/**
 	 *
@@ -22,10 +28,38 @@ public interface Core {
 	 * @throws NotAuthorizedException if {@code attachments} cannot be accessed by {@code account}.
 	 * @throws AuthenticationException
 	 */
-	String storeData(String data, List<String> attachments, Account account, List<String> subjects) throws AuthenticationException;
-	String storeData(String data, Account account, List<String> subjects) throws AuthenticationException;
+	String storeData(String data, Set<String> attachments, Account account, Set<String> subjects) throws AuthenticationException;
+
+	/**
+	 * {@code attachments} defaults to {@code null}.
+	 *
+	 * @see Core#storeData(String, Set, Account, Set)
+	 */
+	String storeData(String data, Account account, Set<String> subjects) throws AuthenticationException;
+
+	/**
+	 * {@code attachments} defaults to {@code null}.
+	 * {@code subjects} defaults to {@code null}.
+	 *
+	 * @see Core#storeData(String, Set, Account, Set)
+	 */
 	String storeData(String data, Account account) throws AuthenticationException;
-	String storeData(Data data, Account account, List<String> subjects) throws AuthenticationException;
+
+	/**
+	 * {@code data} is set to {@link Data#getData()}.
+	 * {@code attachments} is set to {@link Data#getAttachments()}.
+	 *
+	 * @see Core#storeData(String, Set, Account, Set)
+	 */
+	String storeData(Data data, Account account, Set<String> subjects) throws AuthenticationException;
+
+	/**
+	 * {@code data} is set to {@link Data#getData()}.
+	 * {@code attachments} is set to {@link Data#getAttachments()}.
+	 * {@code subjects} defaults to {@code null}.
+	 *
+	 * @see Core#storeData(String, Set, Account, Set)
+	 */
 	String storeData(Data data, Account account) throws AuthenticationException;
 
 	/**
@@ -59,10 +93,7 @@ public interface Core {
 	 */
 	Data getData(String id, Account account) throws AuthenticationException;
 
-	/**
-	 *
-	 * @param password
-	 * @return
-	 */
-	String createAccount(String password);
+	String registerDataListener(Account account, DataListener dataListener) throws AuthenticationException;
+
+	void unregisterDataListener(Account account, String handle) throws AuthenticationException;
 }
