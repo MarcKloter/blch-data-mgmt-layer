@@ -94,11 +94,6 @@
             <version>1.0.0</version>
         </dependency>
         <dependency>
-            <groupId>bdml</groupId>
-            <artifactId>bdml.ipfs</artifactId>
-            <version>1.0.0</version>
-        </dependency>
-        <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-api</artifactId>
         </dependency>

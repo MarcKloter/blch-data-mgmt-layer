@@ -22,7 +22,6 @@
 		<module>bdml.blockchain</module>
 		<module>bdml.cache</module>
 		<module>bdml.services</module>
-        <module>bdml.ipfs</module>
     </modules>
 
 	<dependencyManagement>
