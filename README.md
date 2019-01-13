@@ -69,7 +69,9 @@ A relative path to this .jks file must be supplied to the jar using the `--keyst
 java -jar blch-data-mgmt-layer-1.0.0.jar --keystore keystore.jks --password <password>
 ```
 
-**Specification**: [JSON-RPC and WebSocket Endpoint](JSON-RPC-Endpoint.md)
+**Specification**: 
+* [JSON-RPC Endpoint](JSON-RPC-Endpoint.md)
+* [WebSocket Endpoint](WebSocket-Endpoint.md)
 
 Development Note: While using self-signed certificates, remember to adjust SSL verification. 
 
@@ -86,6 +88,7 @@ The bdml-data-mgmt-layer can be configured by providing an `application.properti
 The configuration will be prioritized in the following order: `application.properties` in the current working directory > `application.properties` on the classpath > [default configuration](bdml.core/src/main/resources/default.application.properties)
 
 The following properties can be set:
+
 | Property | Default | Description |
 |----------|---------|-------------|
 | `bdml.blockchain.contract.address` | | This property is **mandatory** for the Core to operate and will cause an Exception of `getInstance()` if not specified. It sets the address under which the [EventStorage smart contract] is deployed which is mandatory to store data with the given [Blockchain interface](bdml.services/src/main/java/bdml/services/Blockchain.java) implementation (bdml.blockchain). |
