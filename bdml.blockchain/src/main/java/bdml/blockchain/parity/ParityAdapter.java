@@ -1,6 +1,7 @@
 package bdml.blockchain.parity;
 
 import bdml.blockchain.web3j.EventStorage;
+import bdml.services.exceptions.MisconfigurationException;
 import bdml.services.helper.FrameListener;
 import io.reactivex.Flowable;
 import io.reactivex.disposables.Disposable;
@@ -62,8 +63,7 @@ public class ParityAdapter {
             NewAccountIdentifier accountIdentifier = web3j.personalNewAccount(password).send();
             return accountIdentifier.getAccountId();
         } catch (IOException e) {
-            // TODO: handle exception
-            throw new RuntimeException();
+            throw new MisconfigurationException(e.getMessage());
         }
     }
 
@@ -92,8 +92,7 @@ public class ParityAdapter {
             // the receipt holds amongst other things: block hash, transaction index, transaction hash
             return receipt.getTransactionHash();
         } catch (Exception e) {
-            // TODO: handle exception
-            throw new RuntimeException(e);
+            throw new MisconfigurationException(e.getMessage());
         }
     }
 
@@ -145,8 +144,7 @@ public class ParityAdapter {
             EthBlockNumber blockNumber = web3j.ethBlockNumber().send();
             return blockNumber.getBlockNumber();
         } catch (IOException e) {
-            // TODO: handle exception
-            throw new RuntimeException(e);
+            throw new MisconfigurationException(e.getMessage());
         }
     }
 
@@ -223,8 +221,7 @@ public class ParityAdapter {
             // use eth_getLogs to retrieve list of logs, return the first
             return web3j.ethGetLogs(filter).send().getLogs();
         } catch (IOException e) {
-            // TODO: handle exception
-            throw new RuntimeException(e);
+            throw new MisconfigurationException(e.getMessage());
         }
     }
 
