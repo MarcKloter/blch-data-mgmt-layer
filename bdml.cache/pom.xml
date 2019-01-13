@@ -14,6 +14,12 @@
 	<artifactId>bdml.cache</artifactId>
 	<packaging>jar</packaging>
 
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<!-- SonarQube: ignore dummy files -->
+		<sonar.exclusions>**/*Dummy*</sonar.exclusions>
+	</properties>
+
 	<build>
 		<plugins>
 			<plugin>

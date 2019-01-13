@@ -15,8 +15,6 @@ import com.github.arteam.simplejsonrpc.core.annotation.JsonRpcOptional;
 import com.github.arteam.simplejsonrpc.core.annotation.JsonRpcParam;
 import com.github.arteam.simplejsonrpc.core.annotation.JsonRpcService;
 
-import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 
 @JsonRpcService

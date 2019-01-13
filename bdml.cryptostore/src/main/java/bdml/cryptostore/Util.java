@@ -26,6 +26,10 @@ public class Util {
 
     /**
      * Concatenate two byte arrays.
+     *
+     * @param a first byte array to concatenate
+     * @param b second byte array to concatenate
+     * @return byte array of length {@code a.length + b.length} containing the content of {@code a} and {@code b}.
      */
     public static byte[] concatenate(byte[] a, byte[] b) {
         byte[] c = new byte[a.length + b.length];
