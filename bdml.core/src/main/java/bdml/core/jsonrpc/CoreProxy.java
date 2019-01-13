@@ -56,8 +56,8 @@ public class CoreProxy {
     }
 
     @JsonRpcMethod
-    public Identifier listAttachments(@JsonRpcParam("account") AccountWrapper account,
-                                      @JsonRpcParam("identifier") String identifier) {
+    public Identifier listAttachments(@JsonRpcParam("id") String identifier,
+                                      @JsonRpcParam("account") AccountWrapper account) {
         try {
             return core.listAttachments(account.unwrap(), identifier);
         } catch (IllegalArgumentException e) {
@@ -71,7 +71,7 @@ public class CoreProxy {
 
     @JsonRpcMethod
     public Data getData(@JsonRpcParam("id") String id,
-                           @JsonRpcParam("account") AccountWrapper account) {
+                        @JsonRpcParam("account") AccountWrapper account) {
         try {
             return core.getData(id, account.unwrap());
         } catch (IllegalArgumentException e) {
