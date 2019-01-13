@@ -3,8 +3,6 @@ package bdml.services;
 import java.security.PublicKey;
 
 public interface CryptographicStore {
-	// TODO: javadoc
-
 	/**
 	 * Generates a public/private key pair secured by the provided secret.
 	 * Future operations requiring the private key will require to provide this secret.
@@ -25,23 +23,24 @@ public interface CryptographicStore {
 	boolean checkKeyPair(PublicKey publicKey, String secret);
 
 	/**
-	 *
+	 * Asymmetrically encrypts the given {@code plaintext} using the public key {@code key}.
 	 * The cipher used must be defined by the implementation.
 	 *
-	 * @param key TODO
-	 * @param plaintext TODO
-	 * @return TODO
+	 * @param key {@link PublicKey} to encrypt
+	 * @param plaintext byte array containing a plaintext
+	 * @return Byte array containing the encrypted plaintext (= ciphertext).
 	 */
 	byte[] encrypt(PublicKey key, byte[] plaintext);
 
 	/**
-	 *
+	 * Asymmetrically decrypts the given {@code ciphertext} using the private key corresponding to the {@code key} and
+	 * {@code secret} combination.
 	 * The cipher used must be defined by the implementation.
 	 *
-	 * @param key TODO
-	 * @param secret TODO
-	 * @param ciphertext TODO
-	 * @return TODO
+	 * @param key public key corresponding to a key pair
+	 * @param secret secret corresponding to the given public key
+	 * @param ciphertext byte array containing a ciphertext
+	 * @return Byte array containing the decrypted ciphertext (= plaintext) or {@code null}.
 	 */
 	byte[] decrypt(PublicKey key, String secret, byte[] ciphertext);
 }
