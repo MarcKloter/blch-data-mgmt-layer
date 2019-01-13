@@ -14,6 +14,8 @@ Default JSON-RPC endpoint: <https://localhost:8550>
 ## JSON-RPC Methods
 * [storeData](#storeData)
 * [listData](#listData)
+* [listDataChanges](#listDataChanges)
+* [listAttachments](#listAttachments)
 * [getData](#getData)
 * [createAccount](#createAccount)
 
@@ -85,7 +87,7 @@ Stores data in the connected blockchain.
 ***
 
 ### listData
-Lists all identifiers of data that can **directly** be accessed by the provided account.
+Lists all **_data identifiers_** of data that can **directly** be accessed by the provided account.
 
 Direct accessible data are entries where the provided account is either creator or recipient of. Attachments will not be included in the result.
 
@@ -124,7 +126,7 @@ Direct accessible data are entries where the provided account is either creator 
 ***
 
 ### listDataChanges
-Lists identifiers of data that can **directly** be accessed by the provided account since the last time this method was called.
+Lists **_data identifiers_** of data that can **directly** be accessed by the provided account since the last time this method was called.
 
 Direct accessible data are entries where the provided account is either creator or recipient of. Attachments will not be included in the result.
 
@@ -161,6 +163,45 @@ Direct accessible data are entries where the provided account is either creator 
 
 ***
 
+### listAttachments
+Lists the **_data identifiers_** of the referenced entry and all attachments recursively. 
+
+#### Parameters
+* `id: String` - **_data identifier_**.
+* `account: Object` - **_account_** to interact as.
+
+#### Returns
+* `Array` - Array of **_data identifiers_**.
+
+#### Example
+```js
+// Request
+{
+    "jsonrpc": "2.0",
+    "method": "listAttachments",
+    "params": {
+        "id": "132e5838bc711f27c455500baee4d8ad809e5d3e617b29d86a7b025904a2e1ed",
+        "account": {
+            "identifier": "407d73d8a49eeb85d32cf465507dd71d507100c1",
+            "password": "myPassword"
+        }
+    },
+    "id": 70
+}
+
+// Result
+{
+    "id": 70,
+    "jsonrpc": "2.0",
+    "result": [
+        "132e5838bc711f27c455500baee4d8ad809e5d3e617b29d86a7b025904a2e1ed",
+        "ee8e01eff7acd538e8f6e6deea1a971e1be920ee4ceb4419434315dac04ed736"
+    ]
+}
+```
+
+***
+
 ### getData
 Returns data stored in the connected blockchain.
 
@@ -186,12 +227,12 @@ Returns data stored in the connected blockchain.
             "password": "myPassword"
         }
     },
-    "id": 70
+    "id": 71
 }
 
 // Result
 {
-    "id": 70,
+    "id": 71,
     "jsonrpc": "2.0",
     "result": {
         "data": "myData",
