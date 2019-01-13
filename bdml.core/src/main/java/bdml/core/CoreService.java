@@ -1,6 +1,5 @@
 package bdml.core;
 
-import java.math.BigInteger;
 import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.util.*;
@@ -31,21 +30,28 @@ import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
 
 public class CoreService implements Core {
-    // TODO: load constants from configuration file
-    private final int VERSION = 1;
-    private final int NONCE_BYTES = 4;
-    private final int LISTENER_HANDLE_BYTES = 8;
+    private static final int VERSION = 1;
+    private static final int NONCE_BYTES = 4;
+    private static final int LISTENER_HANDLE_BYTES = 8;
+    private static final int ACCOUNT_IDENTIFIER_BYTES = 20;
 
-    private Blockchain blockchain = new BlockchainFacade();
-    private KeyServer keyServer = new KeyServerAdapter();
-    private CryptographicStore cryptoStore = new CryptoStoreAdapter();
-    private Cache cache = new CacheImpl();
+    private static final String APP_CONFIG= "application.properties";
+    private static final String DEFAULT_CONFIG= "default.application.properties";
+
+    private final Blockchain blockchain;
+    private final KeyServer keyServer;
+    private final CryptographicStore cryptoStore;
+    private final Cache cache;
 
     private ConcurrentHashMap<AuthenticatedAccount, ConcurrentHashMap<String, DataListener>> handleToListener = new ConcurrentHashMap<>();
     private AtomicBoolean frameListenerRunning = new AtomicBoolean(false);
 
     private CoreService() {
-
+        Properties configuration = Configuration.load(APP_CONFIG, DEFAULT_CONFIG);
+        this.blockchain = new BlockchainFacade(configuration);
+        this.keyServer = new KeyServerAdapter(configuration);
+        this.cryptoStore = new CryptoStoreAdapter(configuration);
+        this.cache = new CacheImpl(configuration);
     }
 
     // initialize-on-demand holder
@@ -67,7 +73,7 @@ public class CoreService implements Core {
 
         // take 160 LSB in hex representation as account identifier
         byte[] pkBytes = publicKey.getEncoded();
-        byte[] idBytes = Arrays.copyOfRange(pkBytes, pkBytes.length - 20, pkBytes.length);
+        byte[] idBytes = Arrays.copyOfRange(pkBytes, pkBytes.length - ACCOUNT_IDENTIFIER_BYTES, pkBytes.length);
         String identifier = Hex.encodeHexString(idBytes);
 
         Account account = new Account(identifier, password);
@@ -485,7 +491,8 @@ public class CoreService implements Core {
         @Override
         public void update(byte[] idBytes, byte[] frame) {
             for(AuthenticatedAccount account : handleToListener.keySet()) {
-                // TODO: refactor (same as pollNew)
+                // TODO: refactor (same as pollNew) currently: O(n*m)
+                // TODO: either loop over encCap and remove accounts or loop over accounts and remove decrypted encCaps
                 // check whether the data was previously cached through getData or storeData
                 byte[] capability = cache.getCapability(account, idBytes);
 

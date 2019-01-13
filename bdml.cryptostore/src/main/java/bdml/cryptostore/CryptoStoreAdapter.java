@@ -2,34 +2,41 @@ package bdml.cryptostore;
 
 import java.security.*;
 import java.security.spec.ECGenParameterSpec;
-import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.util.Arrays;
+import java.util.Properties;
 
 import bdml.cryptostore.persistence.KeyPairList;
 import bdml.services.CryptographicStore;
 import bdml.services.exceptions.MisconfigurationException;
-import org.bouncycastle.crypto.InvalidCipherTextException;
+import bdml.services.exceptions.MissingConfigurationException;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.jce.spec.IESParameterSpec;
 
-import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.NoSuchPaddingException;
 
 public class CryptoStoreAdapter implements CryptographicStore {
-    // TODO: load KEY_GEN_ALG and EC_CURVE from configuration file
-    private final String KEY_GEN_ALG = "EC";
-    private final String ASYMMETRIC_CIPHER = "ECIESwithAES-CBC";
-    private final String EC_CURVE = "secp256k1";
-    //private final String EC_CURVE = "secp521r1";
-    //private final String EC_CURVE = "secp384r1";
+    // mandatory configuration properties
+    private static final String OUTPUT_DIRECTORY_KEY = "bdml.output.directory";
 
-    private KeyPairList keyPairs;
+    private static final String KEY_GEN_ALG = "EC";
+    private static final String ASYMMETRIC_CIPHER = "ECIESwithAES-CBC";
+    private static final String EC_CURVE = "secp256k1"; // other curves: secp521r1, secp384r1
 
-    public CryptoStoreAdapter() {
-        this.keyPairs = new KeyPairList();
+    private final KeyPairList keyPairs;
+
+    public CryptoStoreAdapter(Properties configuration) {
+        //load configuration
+        String outputDirectory = getProperty(configuration, OUTPUT_DIRECTORY_KEY);
+
+        this.keyPairs = new KeyPairList(outputDirectory);
+    }
+
+    private String getProperty(Properties configuration, String property) {
+        if(!configuration.containsKey(property))
+            throw new MissingConfigurationException(property);
+
+        return configuration.getProperty(property);
     }
 
     @Override

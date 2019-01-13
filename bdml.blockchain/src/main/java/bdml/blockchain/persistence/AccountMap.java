@@ -16,14 +16,15 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class AccountMap {
-    // TODO: load FILENAME from configuration file
-    private final String DIRECTORY = "bdml-data";
-    private final String FILENAME = "accountMap.json";
-    private final String FILEPATH = DIRECTORY + "/" + FILENAME;
+    private static final String FILENAME = "accountMap.json";
+
+    private final String FILEPATH;
 
     private Map<String, String> accountMap;
 
-    public AccountMap() {
+    public AccountMap(String outputDirectory) {
+        this.FILEPATH = outputDirectory + "/" + FILENAME;
+
         // load persisted accounts
         ObjectMapper mapper = new ObjectMapper();
         File file = new File(FILEPATH);
@@ -37,7 +38,7 @@ public class AccountMap {
             }
         } else {
             // create path if it doesn't exist
-            Path path = Paths.get(DIRECTORY);
+            Path path = Paths.get(outputDirectory);
             if(Files.notExists(path)) {
                 try {
                     Files.createDirectories(path);

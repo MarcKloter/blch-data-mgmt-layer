@@ -5,6 +5,7 @@ import bdml.blockchain.persistence.AccountMap;
 import bdml.services.Blockchain;
 import bdml.services.api.types.Account;
 import bdml.services.exceptions.MisconfigurationException;
+import bdml.services.exceptions.MissingConfigurationException;
 import bdml.services.helper.FrameListener;
 
 import java.math.BigInteger;
@@ -17,17 +18,33 @@ import java.util.*;
  * The BlockchainFacade implements the Blockchain interface and performs context-specific input validation.
  */
 public class BlockchainFacade implements Blockchain {
-    // TODO: load from config file
-    private final String CONTRACT_ADDRESS = "0x964bc870a2d3e8bf73d05fa5708039bc1861a118";
-    private final String URL = "http://localhost:8545";
-    private final String WEBSOCKET_URI = "ws://localhost:8546";
+    // mandatory configuration properties
+    private static final String OUTPUT_DIRECTORY_KEY = "bdml.output.directory";
+    private static final String CONTRACT_ADDRESS_KEY = "bdml.blockchain.contract.address";
+    private static final String URI_KEY = "bdml.blockchain.parity.jsonrpc.uri";
+    private static final String WEBSOCKET_URI_KEY = "bdml.blockchain.parity.websocket.uri";
+
+    private final String webSocketURI;
 
     private AccountMap accounts;
     private ParityAdapter parity;
 
-    public BlockchainFacade() {
-        this.accounts = new AccountMap();
-        this.parity = new ParityAdapter(URL, CONTRACT_ADDRESS);
+    public BlockchainFacade(Properties configuration) {
+        // load configuration
+        String outputDirectory = getProperty(configuration, OUTPUT_DIRECTORY_KEY);
+        String contractAddress = getProperty(configuration, CONTRACT_ADDRESS_KEY);
+        String jsonrpcURI = getProperty(configuration, URI_KEY);
+        this.webSocketURI = getProperty(configuration, WEBSOCKET_URI_KEY);
+
+        this.accounts = new AccountMap(outputDirectory);
+        this.parity = new ParityAdapter(jsonrpcURI, contractAddress);
+    }
+
+    private String getProperty(Properties configuration, String property) {
+        if(!configuration.containsKey(property))
+            throw new MissingConfigurationException(property);
+
+        return configuration.getProperty(property);
     }
 
     @Override
@@ -90,10 +107,9 @@ public class BlockchainFacade implements Blockchain {
 
     @Override
     public void startFrameListener(FrameListener frameListener) {
-        URI webSocketURI;
         try {
-            webSocketURI = new URI(WEBSOCKET_URI);
-            parity.startFrameListener(webSocketURI, frameListener);
+            URI uri = new URI(webSocketURI);
+            parity.startFrameListener(uri, frameListener);
         } catch (URISyntaxException e) {
             throw new MisconfigurationException(String.format("WebSocket URI malformed: %s", e.getMessage()));
         } catch (ConnectException e) {

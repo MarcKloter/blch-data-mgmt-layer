@@ -5,6 +5,7 @@ import bdml.services.Cache;
 import bdml.services.api.types.Account;
 import bdml.services.api.types.Identifier;
 import bdml.services.exceptions.MisconfigurationException;
+import bdml.services.exceptions.MissingConfigurationException;
 import org.apache.commons.codec.binary.Hex;
 import org.h2.tools.RunScript;
 
@@ -12,21 +13,38 @@ import java.io.InputStreamReader;
 import java.sql.*;
 import java.util.HashSet;
 import java.util.Optional;
+import java.util.Properties;
 import java.util.Set;
 
 public class CacheImpl implements Cache {
-    // TODO: load constants from configuration file
-    private final String CIPHER = "AES";
-    private final String DIRECTORY = "bdml-data";
-    // fallback value if a cache file was deleted or corrupt, could eg. be set to the block where a smart contract is deployed.
-    private final String FALLBACK_BLOCK = "0";
+    // mandatory configuration properties
+    private static final String FALLBACK_BLOCK_KEY = "bdml.cache.fallback.block";
+    private static final String OUTPUT_DIRECTORY_KEY = "bdml.output.directory";
+
+    private static final String CIPHER = "AES";
+
+    // fallback value if a cache file was deleted or corrupt, should be set to the block when the application was deployed
+    private final String fallbackBlock;
+    private final String outputDirectory;
+
+    public CacheImpl(Properties configuration) {
+        // load configuration
+        this.fallbackBlock = getProperty(configuration, FALLBACK_BLOCK_KEY);
+        this.outputDirectory = getProperty(configuration, OUTPUT_DIRECTORY_KEY);
+    }
+
+    private String getProperty(Properties configuration, String property) {
+        if(!configuration.containsKey(property))
+            throw new MissingConfigurationException(property);
+
+        return configuration.getProperty(property);
+    }
 
     @Override
     public void initialize(Account account, String pointer) {
         try {
             createCache(account, pointer);
         } catch (SQLException e) {
-            e.printStackTrace();
             throw new IllegalStateException("Account has been initialized before.");
         }
     }
@@ -160,36 +178,40 @@ public class CacheImpl implements Cache {
 
     private Optional<Data> getData(Connection conn, byte[] identifier) throws SQLException {
         String sql = "SELECT * FROM DATA WHERE identifier = ?";
-        PreparedStatement stmt = conn.prepareStatement(sql);
-        stmt.setBytes(1, identifier);
-        try(ResultSet rs = stmt.executeQuery()) {
-            return Data.buildFrom(rs);
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setBytes(1, identifier);
+            try (ResultSet rs = stmt.executeQuery()) {
+                return Data.buildFrom(rs);
+            }
         }
     }
 
     private void setData(Connection conn, Data data) throws SQLException {
         String sql = "INSERT INTO DATA(identifier, capability, attachment) VALUES(?, ?, ?)";
-        PreparedStatement stmt = conn.prepareStatement(sql);
-        stmt.setBytes(1, data.getIdentifier());
-        stmt.setBytes(2, data.getCapability());
-        stmt.setBoolean(3, data.isAttachment());
-        stmt.executeUpdate();
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setBytes(1, data.getIdentifier());
+            stmt.setBytes(2, data.getCapability());
+            stmt.setBoolean(3, data.isAttachment());
+            stmt.executeUpdate();
+        }
     }
 
     private void setIsAttachment(Connection conn, byte[] identifier) throws SQLException {
         String sql = "UPDATE DATA SET attachment = ? WHERE identifier = ?)";
-        PreparedStatement stmt = conn.prepareStatement(sql);
-        stmt.setBoolean(1, true);
-        stmt.setBytes(2, identifier);
-        stmt.executeUpdate();
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setBoolean(1, true);
+            stmt.setBytes(2, identifier);
+            stmt.executeUpdate();
+        }
     }
 
     private void setWasRecursivelyParsed(Connection conn, byte[] identifier) throws SQLException {
         String sql = "UPDATE DATA SET recursively_parsed = ? WHERE identifier = ?)";
-        PreparedStatement stmt = conn.prepareStatement(sql);
-        stmt.setBoolean(1, true);
-        stmt.setBytes(2, identifier);
-        stmt.executeUpdate();
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setBoolean(1, true);
+            stmt.setBytes(2, identifier);
+            stmt.executeUpdate();
+        }
     }
 
     private Connection connectOrCreate(Account account) {
@@ -199,7 +221,7 @@ public class CacheImpl implements Cache {
         } catch (SQLException e1) {
             try {
                 // create an empty cache with a pointer to null
-                return createCache(account, FALLBACK_BLOCK);
+                return createCache(account, fallbackBlock);
             } catch (SQLException e2) {
                 throw new MisconfigurationException(e2.getMessage());
             }
@@ -213,7 +235,7 @@ public class CacheImpl implements Cache {
         // combination of file password (used for encryption) and user password
         String password = Util.sha256(db + pwd) + " " + pwd;
         // using h2 in auto mixed mode
-        String url = String.format("jdbc:h2:./%s/%s;CIPHER=%s;AUTO_SERVER=TRUE", DIRECTORY, db, CIPHER);
+        String url = String.format("jdbc:h2:./%s/%s;CIPHER=%s;AUTO_SERVER=TRUE", outputDirectory, db, CIPHER);
         return DriverManager.getConnection(url + params, db, password);
     }
 
@@ -226,10 +248,11 @@ public class CacheImpl implements Cache {
 
         // set index = 0 to the pointer
         String sql = "INSERT INTO VARIABLES(key, value) VALUES(?, ?)";
-        PreparedStatement stmt = conn.prepareStatement(sql);
-        stmt.setString(1, "pointer");
-        stmt.setString(2, pointer);
-        stmt.executeUpdate();
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, "pointer");
+            stmt.setString(2, pointer);
+            stmt.executeUpdate();
+        }
 
         return conn;
     }

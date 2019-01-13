@@ -7,7 +7,6 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.CollectionType;
 
-import javax.crypto.spec.SecretKeySpec;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -15,21 +14,21 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.KeyPair;
-import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 
 public class KeyPairList {
-    // TODO: load FILENAME from configuration file
-    private final String DIRECTORY = "bdml-data";
-    private final String FILENAME = "keyPairList.json";
-    private final String FILEPATH = DIRECTORY + "/" + FILENAME;
+    private static final String FILENAME = "keyPairList.json";
+
+    private final String FILEPATH;
 
     private List<SecuredKeyPair> keyPairs;
 
-    public KeyPairList() {
+    public KeyPairList(String outputDirectory) {
+        this.FILEPATH = outputDirectory + "/" + FILENAME;
+
         // load previously generated key pairs
         ObjectMapper mapper = new ObjectMapper();
         File file = new File(FILEPATH);
@@ -43,7 +42,7 @@ public class KeyPairList {
             }
         } else {
             // create path if it doesn't exist
-            Path path = Paths.get(DIRECTORY);
+            Path path = Paths.get(outputDirectory);
             if(Files.notExists(path)) {
                 try {
                     Files.createDirectories(path);
