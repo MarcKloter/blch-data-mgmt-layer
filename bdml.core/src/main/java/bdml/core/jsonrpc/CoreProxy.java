@@ -59,7 +59,7 @@ public class CoreProxy {
     public Identifier listAttachments(@JsonRpcParam("id") String identifier,
                                       @JsonRpcParam("account") AccountWrapper account) {
         try {
-            return core.listAttachments(account.unwrap(), identifier);
+            return core.listAttachments(identifier, account.unwrap());
         } catch (IllegalArgumentException e) {
             throw new InvalidParamsException(e.getMessage());
         } catch (AuthenticationException e) {

@@ -147,7 +147,7 @@ public class CoreService implements Core {
     }
 
     @Override
-    public Identifier listAttachments(Account account, String identifier) throws AuthenticationException {
+    public Identifier listAttachments(String identifier, Account account) throws AuthenticationException {
         Assert.requireNonEmpty(identifier, "id");
         byte[] idBytes = validateIdentifier(identifier);
         AuthenticatedAccount caller = authenticate(account);
