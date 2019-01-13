@@ -35,8 +35,8 @@ public class CoreService implements Core {
     private static final int LISTENER_HANDLE_BYTES = 8;
     private static final int ACCOUNT_IDENTIFIER_BYTES = 20;
 
-    private static final String APP_CONFIG= "application.properties";
-    private static final String DEFAULT_CONFIG= "default.application.properties";
+    private static final String APP_CONFIG = "application.properties";
+    private static final String DEFAULT_CONFIG = "default.application.properties";
 
     private final Blockchain blockchain;
     private final KeyServer keyServer;
@@ -52,11 +52,6 @@ public class CoreService implements Core {
         this.keyServer = new KeyServerAdapter(configuration);
         this.cryptoStore = new CryptoStoreAdapter(configuration);
         this.cache = new CacheImpl(configuration);
-    }
-
-    // initialize-on-demand holder
-    private static class Holder {
-        private static final CoreService INSTANCE = new CoreService();
     }
 
     public static CoreService getInstance() {
@@ -104,8 +99,6 @@ public class CoreService implements Core {
 
         // addCapability owner as recipient
         recipients.add(caller.getPublicKey());
-
-        // TODO: save data to IPFS
 
         ParsedFrame frame = assembleFrame(data, recipients, attachedCapabilities);
 
@@ -195,7 +188,7 @@ public class CoreService implements Core {
 
         accountListeners.putIfAbsent(handle, dataListener);
 
-        if(frameListenerRunning.compareAndSet(false, true))
+        if (frameListenerRunning.compareAndSet(false, true))
             blockchain.startFrameListener(new CoreFrameListener());
 
         return handle;
@@ -208,17 +201,15 @@ public class CoreService implements Core {
         ConcurrentHashMap<String, DataListener> accountListeners = handleToListener.getOrDefault(caller, null);
 
         // check whether the handle to remove was registered by the caller
-        if(accountListeners != null) {
+        if (accountListeners != null) {
             accountListeners.remove(handle);
-            if(accountListeners.isEmpty())
+            if (accountListeners.isEmpty())
                 handleToListener.remove(caller);
 
-            if(frameListenerRunning.compareAndSet(true, false))
+            if (frameListenerRunning.compareAndSet(true, false))
                 blockchain.stopFrameListener();
         }
     }
-    //------------------------------------------------------------------------------------------------------------------
-    //endregion
 
     /**
      * Authenticates whether the given account exists.
@@ -239,6 +230,8 @@ public class CoreService implements Core {
 
         return new AuthenticatedAccount(account, publicKey);
     }
+    //------------------------------------------------------------------------------------------------------------------
+    //endregion
 
     /**
      * Validates the given 32 bytes identifier from hex representation to a byte array.
@@ -377,7 +370,7 @@ public class CoreService implements Core {
 
         // check whether a capability was provided (from cache) otherwise decrypt it from the frame
         capability = Optional.ofNullable(capability).orElse(decryptCapability(account, protoFrame, identifier));
-        if(capability == null)
+        if (capability == null)
             throw new NotAuthorizedException(String.format("The data identified by '%s' could not be accessed.", Hex.encodeHexString(identifier)));
 
         // wrap the frame with meta information if the given account is able to decrypt its content
@@ -437,7 +430,7 @@ public class CoreService implements Core {
 
         Set<String> result = new HashSet<>();
 
-        for(Map.Entry<byte[], byte[]> entry : newFrames) {
+        for (Map.Entry<byte[], byte[]> entry : newFrames) {
             byte[] identifier = entry.getKey();
             byte[] frame = entry.getValue();
 
@@ -461,7 +454,7 @@ public class CoreService implements Core {
     }
 
     private Optional<Identifier> getAllAttachments(AuthenticatedAccount account, byte[] identifier, byte[] capability) {
-        if(cache.wasRecursivelyParsed(account, identifier))
+        if (cache.wasRecursivelyParsed(account, identifier))
             return Optional.ofNullable(cache.getAllAttachments(account, identifier));
 
         byte[] frameBytes = blockchain.getFrame(identifier);
@@ -473,7 +466,7 @@ public class CoreService implements Core {
 
         Set<Identifier> attachments = new HashSet<>();
 
-        for(Map.Entry<byte[], byte[]> attachment : payload.getAttachments()) {
+        for (Map.Entry<byte[], byte[]> attachment : payload.getAttachments()) {
             byte[] attachmentID = attachment.getKey();
             byte[] attachmentCAP = attachment.getValue();
             // recursively loop through all attachments
@@ -487,10 +480,15 @@ public class CoreService implements Core {
         return Optional.of(new Identifier(payload.getData(), attachments));
     }
 
+    // initialize-on-demand holder
+    private static class Holder {
+        private static final CoreService INSTANCE = new CoreService();
+    }
+
     public class CoreFrameListener implements FrameListener {
         @Override
         public void update(byte[] idBytes, byte[] frame) {
-            for(AuthenticatedAccount account : handleToListener.keySet()) {
+            for (AuthenticatedAccount account : handleToListener.keySet()) {
                 // TODO: refactor (same as pollNew) currently: O(n*m)
                 // TODO: either loop over encCap and remove accounts or loop over accounts and remove decrypted encCaps
                 // check whether the data was previously cached through getData or storeData
@@ -502,8 +500,8 @@ public class CoreService implements Core {
                 String identifier = Hex.encodeHexString(idBytes);
 
                 ConcurrentHashMap<String, DataListener> accountListeners = handleToListener.getOrDefault(account, null);
-                if(accountListeners != null && !accountListeners.isEmpty()) {
-                    for(DataListener dataListener : accountListeners.values()) {
+                if (accountListeners != null && !accountListeners.isEmpty()) {
+                    for (DataListener dataListener : accountListeners.values()) {
                         dataListener.update(identifier);
                     }
                 }
