@@ -6,6 +6,7 @@ import com.github.arteam.simplejsonrpc.server.JsonRpcServer;
 import org.apache.commons.cli.*;
 
 import java.io.*;
+import java.net.URL;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 
@@ -14,7 +15,7 @@ import static spark.Spark.*;
 public class Starter {
     private final static String DEFAULT_PORT = "8550";
 
-    public static void main(String[] args) throws FileNotFoundException, IOException {
+    public static void main(String[] args) {
         CommandLine cmd = handleCLIArguments(args);
 
         // optional port argument
@@ -27,7 +28,7 @@ public class Starter {
         String truststorePassword = cmd.getOptionValue("truststore-password", null);
 
         // required keystore arguments
-        String keystoreFile = getLocation() + cmd.getOptionValue("keystore");
+        String keystoreFile = cmd.getOptionValue("keystore");
         String keystorePassword = cmd.getOptionValue("password");
 
         secure(keystoreFile, keystorePassword, truststoreFile, truststorePassword);
@@ -87,20 +88,5 @@ public class Starter {
         }
 
         return cmd;
-    }
-
-    /**
-     * Returns the absolute path to the jar file.
-     * Evaluates to bdml.core/target/classes/ during development.
-     *
-     * @return String defining the absolute path to the directory in which the jar file resides or null in case of an error.
-     */
-    private static String getLocation() {
-        try {
-            String path = Starter.class.getProtectionDomain().getCodeSource().getLocation().getPath();
-            return URLDecoder.decode(path, StandardCharsets.UTF_8);
-        } catch (Exception e) {
-            return null;
-        }
     }
 }
