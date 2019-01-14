@@ -477,7 +477,8 @@ public class CoreService implements Core {
             cache.setRecursivelyParsed(account, identifier);
         }
 
-        return Optional.of(new Identifier(payload.getData(), attachments));
+        String idHex = Hex.encodeHexString(identifier);
+        return Optional.of(new Identifier(idHex, attachments));
     }
 
     // initialize-on-demand holder

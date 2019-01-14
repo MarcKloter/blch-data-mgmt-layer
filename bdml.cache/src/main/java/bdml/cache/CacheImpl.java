@@ -197,7 +197,7 @@ public class CacheImpl implements Cache {
     }
 
     private void setIsAttachment(Connection conn, byte[] identifier) throws SQLException {
-        String sql = "UPDATE DATA SET attachment = ? WHERE identifier = ?)";
+        String sql = "UPDATE DATA SET attachment = ? WHERE identifier = ?";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setBoolean(1, true);
             stmt.setBytes(2, identifier);
@@ -206,7 +206,7 @@ public class CacheImpl implements Cache {
     }
 
     private void setWasRecursivelyParsed(Connection conn, byte[] identifier) throws SQLException {
-        String sql = "UPDATE DATA SET recursively_parsed = ? WHERE identifier = ?)";
+        String sql = "UPDATE DATA SET recursively_parsed = ? WHERE identifier = ?";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setBoolean(1, true);
             stmt.setBytes(2, identifier);
