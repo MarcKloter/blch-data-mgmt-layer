@@ -1,45 +1,35 @@
 package bdml.format;
-import bdml.format.proto.Raw;
 import bdml.services.Formater;
 import bdml.services.api.types.ParsedPayload;
-import com.google.protobuf.ByteString;
-import com.google.protobuf.InvalidProtocolBufferException;
+import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.io.Input;
+import com.esotericsoftware.kryo.io.Output;
 
-import java.util.Collection;
-import java.util.List;
+import java.io.ByteArrayOutputStream;
 import java.util.Properties;
-import java.util.stream.Collectors;
+
 
 public class FormaterImpl implements Formater {
 
-    static List<ByteString> encode(Collection<byte[]> c) {
-        return c.stream().map(ByteString::copyFrom).collect(Collectors.toList());
-    }
+    private final Kryo kryo;
 
     public FormaterImpl(Properties configuration) {
+        this.kryo = new Kryo();
+        this.kryo.setRegistrationRequired(false);
 
     }
 
     @Override
     public byte[] serialize(ParsedPayload data) {
-        //Hardcoded for now
-        RawParsedPayload raw = (RawParsedPayload)data;
-        return Raw.RawData.newBuilder()
-                .setData(raw.data)
-                .addAllAttachedCapability(FormaterImpl.encode(raw.capabilities))
-                .build()
-                .toByteArray();
+        ByteArrayOutputStream b = new ByteArrayOutputStream();
+        Output output = new Output(b);
+        kryo.writeClassAndObject(output, data);
+        return output.toBytes();
     }
 
     @Override
     public ParsedPayload parse(byte[] payload) {
-        //Hardcoded for now
-        try {
-            Raw.RawData data = Raw.RawData.parseFrom(payload);
-            List<byte[]> capabilities = data.getAttachedCapabilityList().stream().map(ByteString::toByteArray).collect(Collectors.toList());
-            return new RawParsedPayload(data.getData(),capabilities);
-        } catch (InvalidProtocolBufferException e) {
-            throw new IllegalStateException("The format of the payload is invalid.");
-        }
+        Input input = new Input(payload);
+        return(ParsedPayload)kryo.readClassAndObject(input);
     }
 }
