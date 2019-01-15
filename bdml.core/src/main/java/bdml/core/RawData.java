@@ -3,7 +3,9 @@ package bdml.core;
 import bdml.core.helper.RawParsedPayload;
 import bdml.services.api.types.Data;
 import bdml.services.api.types.ParsedPayload;
+import com.google.common.collect.ImmutableSet;
 
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -14,7 +16,11 @@ public class RawData implements Data {
 
     public RawData(String data, Set<String> attachements) {
         this.data = data;
-        this.attachements = attachements;
+        if(attachements == null) {
+            this.attachements = ImmutableSet.of();
+        } else {
+            this.attachements = ImmutableSet.copyOf(attachements);
+        }
     }
 
     public String getData() {
