@@ -1,4 +1,4 @@
-package bdml.blockchain.parity;
+package bdml.format.parity;
 
 import org.web3j.protocol.admin.Admin;
 import org.web3j.protocol.core.methods.request.Transaction;

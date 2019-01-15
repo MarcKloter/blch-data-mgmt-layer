@@ -1,11 +1,10 @@
-package bdml.core;
+package bdml.format;
 
-import bdml.core.helper.RawParsedPayload;
 import bdml.services.api.types.Data;
 import bdml.services.api.types.ParsedPayload;
-import com.google.common.collect.ImmutableSet;
 
-import java.util.Objects;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -17,9 +16,9 @@ public class RawData implements Data {
     public RawData(String data, Set<String> attachements) {
         this.data = data;
         if(attachements == null) {
-            this.attachements = ImmutableSet.of();
+            this.attachements = Collections.EMPTY_SET;
         } else {
-            this.attachements = ImmutableSet.copyOf(attachements);
+            this.attachements = Collections.unmodifiableSet(attachements);
         }
     }
 

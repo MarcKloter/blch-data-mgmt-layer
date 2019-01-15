@@ -1,4 +1,4 @@
-package bdml.blockchain.parity;
+package bdml.format.parity;
 
 import org.web3j.protocol.core.DefaultBlockParameter;
 import org.web3j.protocol.core.methods.request.EthFilter;

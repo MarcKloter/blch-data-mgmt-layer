@@ -10,6 +10,7 @@
         <module name="bdml.cache" />
         <module name="bdml.core" />
         <module name="bdml.cryptostore" />
+        <module name="bdml.format" />
         <module name="bdml.keyserver" />
         <module name="bdml.services" />
       </profile>
@@ -19,6 +20,7 @@
       <module name="bdml.cache" target="11" />
       <module name="bdml.core" target="11" />
       <module name="bdml.cryptostore" target="11" />
+      <module name="bdml.format" target="11" />
       <module name="bdml.keyserver" target="11" />
       <module name="bdml.services" target="11" />
       <module name="blch-data-mgmt-layer" target="11" />

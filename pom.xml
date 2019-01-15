@@ -22,7 +22,8 @@
 		<module>bdml.blockchain</module>
 		<module>bdml.cache</module>
 		<module>bdml.services</module>
-    </modules>
+		<module>bdml.format</module>
+	</modules>
 
 	<dependencyManagement>
 		<dependencies>

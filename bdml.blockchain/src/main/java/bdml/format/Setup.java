@@ -1,7 +1,7 @@
-package bdml.blockchain;
+package bdml.format;
 
-import bdml.blockchain.web3j.EventStorage;
-import bdml.blockchain.parity.PersonalTransactionManager;
+import bdml.format.web3j.EventStorage;
+import bdml.format.parity.PersonalTransactionManager;
 import org.web3j.codegen.SolidityFunctionWrapperGenerator;
 import org.web3j.protocol.admin.Admin;
 import org.web3j.protocol.http.HttpService;

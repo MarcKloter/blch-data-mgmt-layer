@@ -34,24 +34,6 @@ public class Protobuf {
         }
     }
 
-
-    public static byte[] buildRawData(String data, Collection<byte[]> attachedCapabilities) {
-        return FrameOuterClass.RawData.newBuilder()
-                .setData(data)
-                .addAllAttachedCapability(encode(attachedCapabilities))
-                .build()
-                .toByteArray();
-    }
-
-
-    public static FrameOuterClass.RawData parseRawData(byte[] payload) {
-        try {
-            return FrameOuterClass.RawData.parseFrom(payload);
-        } catch (InvalidProtocolBufferException e) {
-            throw new IllegalStateException("The format of the payload is invalid.");
-        }
-    }
-
     public static FrameOuterClass.Frame buildFrame(int version, Collection<byte[]> encCap, byte[] encPayload) {
         return FrameOuterClass.Frame.newBuilder()
                 .setVersion(version)

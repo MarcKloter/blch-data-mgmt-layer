@@ -1,4 +1,4 @@
-package bdml.blockchain.web3j;
+package bdml.format.web3j;
 
 import io.reactivex.Flowable;
 import java.math.BigInteger;

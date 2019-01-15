@@ -1,11 +1,10 @@
 package integration;
 
 import bdml.core.CoreService;
-import bdml.core.RawData;
+import bdml.format.RawData;
 import bdml.services.api.Core;
 import bdml.services.api.exceptions.AuthenticationException;
 import bdml.services.api.types.Account;
-import bdml.services.api.types.Data;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;

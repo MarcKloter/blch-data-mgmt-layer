@@ -9,16 +9,16 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import bdml.blockchain.BlockchainFacade;
+import bdml.format.BlockchainFacade;
 import bdml.cache.CacheImpl;
 import bdml.core.helper.*;
 import bdml.core.proto.FrameOuterClass;
 import bdml.cryptostore.CryptoStoreAdapter;
+import bdml.format.FormaterImpl;
+import bdml.format.RawData;
+import bdml.format.RawParsedPayload;
 import bdml.keyserver.KeyServerAdapter;
-import bdml.services.Blockchain;
-import bdml.services.Cache;
-import bdml.services.CryptographicStore;
-import bdml.services.KeyServer;
+import bdml.services.*;
 import bdml.services.api.exceptions.AuthenticationException;
 import bdml.services.api.exceptions.NotAuthorizedException;
 import bdml.services.api.helper.DataListener;
@@ -28,6 +28,7 @@ import bdml.services.api.Core;
 import bdml.services.api.types.Identifier;
 import bdml.services.api.types.ParsedPayload;
 import bdml.services.helper.FrameListener;
+import com.google.protobuf.ByteString;
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
 
@@ -46,6 +47,7 @@ public class CoreService implements Core {
     private final KeyServer keyServer;
     private final CryptographicStore cryptoStore;
     private final Cache cache;
+    private final Formater formater;
 
     private ConcurrentHashMap<AuthenticatedAccount, ConcurrentHashMap<String, DataListener>> handleToListener = new ConcurrentHashMap<>();
     private AtomicBoolean frameListenerRunning = new AtomicBoolean(false);
@@ -56,6 +58,7 @@ public class CoreService implements Core {
         this.keyServer = new KeyServerAdapter(configuration);
         this.cryptoStore = new CryptoStoreAdapter(configuration);
         this.cache = new CacheImpl(configuration);
+        this.formater = new FormaterImpl(configuration);
     }
 
     public static CoreService getInstance() {
@@ -318,7 +321,7 @@ public class CoreService implements Core {
         new SecureRandom().nextBytes(nonce);
 
         // build the unencrypted payload: data || attachedCapabilities || nonce
-        byte[] payload = Protobuf.buildPayload(data.serialize(), nonce);
+        byte[] payload = Protobuf.buildPayload(formater.serialize(data), nonce);
 
         // CAP = H(PAYLOAD)
         byte[] capability = Crypto.hashValue(payload);
@@ -407,11 +410,7 @@ public class CoreService implements Core {
 
         // parse the protocol buffer payload message object
         FrameOuterClass.Payload payload = Protobuf.parsePayload(decPayload);
-        FrameOuterClass.RawData raw = Protobuf.parseRawData(payload.getData().toByteArray());
-
-        //todo: make flexibel
-        List<byte[]> capabilities = raw.getAttachedCapabilityList().stream().map(cap -> cap.toByteArray()).collect(Collectors.toList());
-        return new RawParsedPayload(raw.getData(), capabilities);
+        return formater.parse(payload.getData().toByteArray());
     }
 
     private Data processPayload(Account account, byte[] identifier, ParsedPayload payload) {
