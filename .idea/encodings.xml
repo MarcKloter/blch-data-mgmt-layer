@@ -6,7 +6,6 @@
     <file url="file://$PROJECT_DIR$/bdml.cache" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/bdml.core" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/bdml.cryptostore" charset="UTF-8" />
-    <file url="file://$PROJECT_DIR$/bdml.ipfs" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/bdml.keyserver" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/bdml.services" charset="UTF-8" />
   </component>

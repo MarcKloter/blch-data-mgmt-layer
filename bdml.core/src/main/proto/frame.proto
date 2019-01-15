@@ -7,7 +7,11 @@ message Frame {
 }
 
 message Payload {
+    bytes data = 1;
+    bytes nonce = 2;
+}
+
+message RawData {
     string data = 1;
     repeated bytes attachedCapability = 2;
-    bytes nonce = 3;
 }

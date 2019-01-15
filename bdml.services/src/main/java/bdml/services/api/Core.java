@@ -22,8 +22,7 @@ public interface Core {
 	 * The {@link Account#getIdentifier()} of {@code account} is implicitly added to the {@code subjects}.
 	 * The data is being encrypted using the public keys related to the {@code subjects}.
 	 *
-	 * @param data data to store
-	 * @param attachments set of data identifiers to attach to the data
+	 * @param data Data object to store
 	 * @param account {@link Account} to interact as
 	 * @param subjects set of 20 byte account identifiers to authorize.
 	 * @return 32 bytes data identifier in hex string representation.
@@ -31,34 +30,31 @@ public interface Core {
 	 * @throws AuthenticationException if the {@link Account#getIdentifier()} and {@link Account#getPassword()}
 	 * combination do not correspond to an existing account.
 	 */
-	String storeData(String data, Set<String> attachments, Account account, Set<String> subjects) throws AuthenticationException;
+	String storeData(Data data, Account account, Set<String> subjects) throws AuthenticationException;
 
 	/**
-	 * {@code attachments} defaults to {@code null}.
-	 *
-	 * @see Core#storeData(String, Set, Account, Set)
+	 * Stores plain data without attachments
+	 * {@code data} is set to {@code new RawData(data,null)}.
+	 * @see Core#storeData(Data, Account, Set)
 	 */
 	String storeData(String data, Account account, Set<String> subjects) throws AuthenticationException;
 
 	/**
-	 * {@code attachments} defaults to {@code null}.
-	 * {@code subjects} defaults to {@code null}.
-	 *
-	 * @see Core#storeData(String, Set, Account, Set)
+	 * Stores plain personal data without attachments
+	 * Only the creator can retrieve the data
+	 * {@code data} is set to {@code new RawData(data,null)}.
+	 * {@code subject} is set to {@code null}.
+	 * @see Core#storeData(Data, Account, Set)
 	 */
 	String storeData(String data, Account account) throws AuthenticationException;
 
 	/**
-	 * {@code data} is set to {@link Data#getData()}.
-	 * {@code attachments} is set to {@link Data#getAttachments()}.
-	 *
+	 *{@code data} is set to {@code new RawData(data,attachments)}.
 	 * @see Core#storeData(String, Set, Account, Set)
 	 */
-	String storeData(Data data, Account account, Set<String> subjects) throws AuthenticationException;
+	String storeData(String data, Set<String> attachments, Account account, Set<String> subjects) throws AuthenticationException;
 
 	/**
-	 * {@code data} is set to {@link Data#getData()}.
-	 * {@code attachments} is set to {@link Data#getAttachments()}.
 	 * {@code subjects} defaults to {@code null}.
 	 *
 	 * @see Core#storeData(String, Set, Account, Set)

@@ -1,6 +1,7 @@
 package integration;
 
 import bdml.core.CoreService;
+import bdml.core.RawData;
 import bdml.services.api.Core;
 import bdml.services.api.exceptions.AuthenticationException;
 import bdml.services.api.types.Account;
@@ -18,8 +19,8 @@ public class BasicIT {
     private static final String PASSWORD_2 = "password2";
     private static final String PASSWORD_3 = "password3";
 
-    private static final Data DATA_1 = new Data("data string 1", null);
-    private static final Data DATA_2 = new Data("data string 2", null);
+    private static final RawData DATA_1 = new RawData("data string 1", null);
+    private static final RawData DATA_2 = new RawData("data string 2", null);
 
     private Core core;
 
@@ -43,7 +44,7 @@ public class BasicIT {
         String identifier = core.storeData(DATA_1, account1);
         Assert.isTrue(identifier.length() == 64, "returned identifier format invalid");
 
-        Data result = core.getData(identifier, account1);
+        RawData result = (RawData)core.getData(identifier, account1);
         Assert.notNull(result);
         Assert.isTrue(result.getData().equals(DATA_1.getData()), "the data returned does not match the data stored");
     }
