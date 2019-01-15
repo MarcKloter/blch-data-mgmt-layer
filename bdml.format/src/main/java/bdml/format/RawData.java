@@ -27,11 +27,6 @@ public class RawData implements Data {
     }
 
     @Override
-    public Set<String> getAttachments() {
-        return attachements;
-    }
-
-    @Override
     public ParsedPayload resolveAttachments(Function<String, byte[]> converter) {
         return new RawParsedPayload(data,attachements.stream().map(converter).collect(Collectors.toList()));
     }
