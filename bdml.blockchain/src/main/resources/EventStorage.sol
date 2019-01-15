@@ -1,4 +1,4 @@
-/*pragma solidity >=0.4.22 <0.6.0;
+pragma solidity >=0.4.22 <0.6.0;
 contract EventStorage {
     event DataEvent (
         // 32 bytes identifier: hash(capability)
@@ -10,4 +10,4 @@ contract EventStorage {
     function newData(uint identifier, bytes memory frame) public {
         emit DataEvent(identifier, frame);
     }
-}*/
+}
