@@ -98,7 +98,7 @@ The following properties can be set:
 | `bdml.blockchain.parity.websocket.uri` | `ws://localhost:8546` | This is the URI of the parity WebSocket endpoint. |
 
 ## Using the Core service
-All available methods of the Core service are defined in the [bdml.services/Core interface](bdml.services/src/main/java/bdml/services/api/Core.java).
+All available methods of the Core service are defined in the [bdml.core/Core interface](bdml.core/src/main/java/bdml/core/Core.java/Core.java).
 
 Getting the core instance:
 
@@ -108,7 +108,7 @@ Core core = CoreService.getInstance();
 
 Creating an account:
 ```java
-String accountID = core.createAccount(password);
+Subject accountID = core.createAccount(password);
 
 // account object required for further methods
 Account account = new Account(accountID, password);
@@ -116,7 +116,7 @@ Account account = new Account(accountID, password);
 
 Storing data:
 ```java
-String dataID = core.storeData("my data string", account);
+DataIdentifier dataID = core.storeData(new Data("my data string"), account);
 ```
 
 Querying the stored data:
