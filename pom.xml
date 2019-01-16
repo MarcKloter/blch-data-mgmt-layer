@@ -20,7 +20,6 @@
 		<module>bdml.cryptostore</module>
 		<module>bdml.keyserver</module>
 		<module>bdml.blockchain</module>
-		<module>bdml.cache</module>
 		<module>bdml.services</module>
     </modules>
 

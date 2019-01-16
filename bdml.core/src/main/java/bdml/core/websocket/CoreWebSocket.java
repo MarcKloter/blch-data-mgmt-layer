@@ -1,9 +1,9 @@
 package bdml.core.websocket;
 
 import bdml.core.CoreService;
-import bdml.services.api.Core;
-import bdml.services.api.exceptions.AuthenticationException;
-import bdml.services.api.types.Account;
+import bdml.core.Core;
+import bdml.core.domain.exceptions.AuthenticationException;
+import bdml.core.domain.Account;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.eclipse.jetty.websocket.api.Session;
 import org.eclipse.jetty.websocket.api.annotations.OnWebSocketClose;

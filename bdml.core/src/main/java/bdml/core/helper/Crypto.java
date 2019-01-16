@@ -3,6 +3,7 @@ package bdml.core.helper;
 import java.security.*;
 import java.util.Arrays;
 
+import bdml.core.domain.Capability;
 import bdml.services.exceptions.MisconfigurationException;
 import javax.crypto.Cipher;
 import javax.crypto.spec.GCMParameterSpec;
@@ -22,8 +23,8 @@ public class Crypto {
      * @param plaintext
      * @return
      */
-    public static byte[] symmetricallyEncrypt(byte[] capability, byte[] plaintext) {
-        SecretKeySpec key = new SecretKeySpec(capability, SYMMETRIC_ALGORITHM);
+    public static byte[] symmetricallyEncrypt(Capability capability, byte[] plaintext) {
+        SecretKeySpec key = new SecretKeySpec(capability.toByteArray(), SYMMETRIC_ALGORITHM);
 
         // generate initialization vector
         byte[] ivBytes = new byte[IV_BYTES];
@@ -48,8 +49,8 @@ public class Crypto {
      * @param ciphertext
      * @return
      */
-    public static byte[] symmetricallyDecrypt(byte[] capability, byte[] ciphertext) {
-        SecretKeySpec key = new SecretKeySpec(capability, SYMMETRIC_ALGORITHM);
+    public static byte[] symmetricallyDecrypt(Capability capability, byte[] ciphertext) {
+        SecretKeySpec key = new SecretKeySpec(capability.toByteArray(), SYMMETRIC_ALGORITHM);
 
         // read initialization vector from ciphertext
         int index = ciphertext.length - IV_BYTES;

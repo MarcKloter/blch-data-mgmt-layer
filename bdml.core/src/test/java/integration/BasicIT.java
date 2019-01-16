@@ -1,10 +1,11 @@
 package integration;
 
 import bdml.core.CoreService;
-import bdml.services.api.Core;
-import bdml.services.api.exceptions.AuthenticationException;
-import bdml.services.api.types.Account;
-import bdml.services.api.types.Data;
+import bdml.core.Core;
+import bdml.core.domain.DataIdentifier;
+import bdml.core.domain.exceptions.AuthenticationException;
+import bdml.core.domain.Account;
+import bdml.core.domain.Data;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
@@ -40,8 +41,7 @@ public class BasicIT {
     public void Store_And_Retrieve_Data() throws AuthenticationException {
         Assert.notNull(account1);
 
-        String identifier = core.storeData(DATA_1, account1);
-        Assert.isTrue(identifier.length() == 64, "returned identifier format invalid");
+        DataIdentifier identifier = core.storeData(DATA_1, account1);
 
         Data result = core.getData(identifier, account1);
         Assert.notNull(result);

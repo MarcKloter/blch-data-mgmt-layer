@@ -1,9 +1,8 @@
 package bdml.services;
 
-import bdml.services.api.types.Account;
+import bdml.services.helper.Account;
 import bdml.services.helper.FrameListener;
 
-import java.math.BigInteger;
 import java.util.*;
 
 public interface Blockchain {

@@ -1,7 +1,7 @@
 package bdml.core.websocket;
 
 
-import bdml.services.api.helper.DataListener;
+import bdml.core.domain.DataListener;
 import org.eclipse.jetty.websocket.api.Session;
 
 import java.io.IOException;

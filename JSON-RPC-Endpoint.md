@@ -193,10 +193,24 @@ Lists the **_data identifiers_** of the referenced entry and all attachments rec
 {
     "id": 70,
     "jsonrpc": "2.0",
-    "result": [
-        "132e5838bc711f27c455500baee4d8ad809e5d3e617b29d86a7b025904a2e1ed",
-        "ee8e01eff7acd538e8f6e6deea1a971e1be920ee4ceb4419434315dac04ed736"
-    ]
+    "result": {
+		"identifier": "132e5838bc711f27c455500baee4d8ad809e5d3e617b29d86a7b025904a2e1ed",
+		"attachments": [{
+				"identifier": "6105ed4089f785777c086a45c6fa4f06145f3000fbbb4274b5862dedb82eb27a",
+				"attachments": []
+			},
+			{
+				"identifier": "c54477d8c97f053fbadb51255b2a417e7792b748a6133a61ae7e2c3fab71cf86",
+				"attachments": [{
+					"identifier": "c139a1f62ab67c3ea077c8e92710eac910abca7c531c5bfc200a62efe83c23db",
+					"attachments": [{
+						"identifier": "395ea113b68f1bb006729026a762a5027b4ce956efcb82827f69576f6465a2a0",
+						"attachments": []
+					}]
+				}]
+			}
+		]
+	}
 }
 ```
 
