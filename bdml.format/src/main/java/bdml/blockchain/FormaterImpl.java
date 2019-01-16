@@ -1,4 +1,4 @@
-package bdml.format;
+package bdml.blockchain;
 import bdml.services.Formater;
 import bdml.services.api.types.ParsedPayload;
 import com.esotericsoftware.kryo.Kryo;

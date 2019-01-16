@@ -1,7 +1,7 @@
 package integration;
 
 import bdml.core.CoreService;
-import bdml.format.RawData;
+import bdml.blockchain.RawData;
 import bdml.services.api.Core;
 import bdml.services.api.exceptions.AuthenticationException;
 import bdml.services.api.types.Account;

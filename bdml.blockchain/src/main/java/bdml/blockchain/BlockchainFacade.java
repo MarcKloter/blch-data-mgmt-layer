@@ -1,7 +1,7 @@
-package bdml.format;
+package bdml.blockchain;
 
-import bdml.format.parity.ParityAdapter;
-import bdml.format.persistence.AccountMap;
+import bdml.blockchain.parity.ParityAdapter;
+import bdml.blockchain.persistence.AccountMap;
 import bdml.services.Blockchain;
 import bdml.services.api.types.Account;
 import bdml.services.exceptions.MisconfigurationException;

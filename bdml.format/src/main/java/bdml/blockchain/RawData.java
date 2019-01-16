@@ -1,10 +1,9 @@
-package bdml.format;
+package bdml.blockchain;
 
 import bdml.services.api.types.Data;
 import bdml.services.api.types.ParsedPayload;
 
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;

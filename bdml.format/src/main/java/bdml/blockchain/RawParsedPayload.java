@@ -1,4 +1,4 @@
-package bdml.format;
+package bdml.blockchain;
 
 import bdml.services.api.types.Data;
 import bdml.services.api.types.ParsedPayload;

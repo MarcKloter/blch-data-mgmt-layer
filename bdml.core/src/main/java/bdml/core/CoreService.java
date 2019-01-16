@@ -9,14 +9,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import bdml.format.BlockchainFacade;
+import bdml.blockchain.BlockchainFacade;
 import bdml.cache.CacheImpl;
 import bdml.core.helper.*;
 import bdml.core.proto.FrameOuterClass;
 import bdml.cryptostore.CryptoStoreAdapter;
-import bdml.format.FormaterImpl;
-import bdml.format.RawData;
-import bdml.format.RawParsedPayload;
+import bdml.blockchain.FormaterImpl;
+import bdml.blockchain.RawData;
 import bdml.keyserver.KeyServerAdapter;
 import bdml.services.*;
 import bdml.services.api.exceptions.AuthenticationException;
@@ -28,7 +27,6 @@ import bdml.services.api.Core;
 import bdml.services.api.types.Identifier;
 import bdml.services.api.types.ParsedPayload;
 import bdml.services.helper.FrameListener;
-import com.google.protobuf.ByteString;
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
 

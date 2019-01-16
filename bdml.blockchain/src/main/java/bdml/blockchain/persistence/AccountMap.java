@@ -1,4 +1,4 @@
-package bdml.format.persistence;
+package bdml.blockchain.persistence;
 
 import bdml.services.exceptions.MisconfigurationException;
 import com.fasterxml.jackson.core.JsonFactory;

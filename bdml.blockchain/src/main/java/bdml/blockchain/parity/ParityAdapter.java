@@ -1,6 +1,6 @@
-package bdml.format.parity;
+package bdml.blockchain.parity;
 
-import bdml.format.web3j.EventStorage;
+import bdml.blockchain.web3j.EventStorage;
 import bdml.services.exceptions.MisconfigurationException;
 import bdml.services.helper.FrameListener;
 import io.reactivex.Flowable;
