@@ -1,16 +1,10 @@
-package bdml.core;
+package bdml.api;
 
-import bdml.core.jsonrpc.CoreProxy;
-import bdml.core.websocket.CoreWebSocket;
+import bdml.api.jsonrpc.CoreProxy;
+import bdml.api.websocket.CoreWebSocket;
 import com.github.arteam.simplejsonrpc.server.JsonRpcServer;
 import org.apache.commons.cli.*;
-
-import java.io.*;
-import java.net.URL;
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
-
-import static spark.Spark.*;
+import spark.Spark;
 
 public class Starter {
     private final static String DEFAULT_PORT = "8550";
@@ -21,7 +15,7 @@ public class Starter {
         // optional port argument
         int port = Integer.parseInt(cmd.getOptionValue("port", DEFAULT_PORT));
 
-        port(port);
+        Spark.port(port);
 
         // optional truststore arguments
         String truststoreFile = cmd.getOptionValue("truststore", null);
@@ -31,7 +25,7 @@ public class Starter {
         String keystoreFile = cmd.getOptionValue("keystore");
         String keystorePassword = cmd.getOptionValue("password");
 
-        secure(keystoreFile, keystorePassword, truststoreFile, truststorePassword);
+        Spark.secure(keystoreFile, keystorePassword, truststoreFile, truststorePassword);
 
         // TODO: exceptions thrown by core proxy are being e.printStackTrace()'ed
 
@@ -39,12 +33,12 @@ public class Starter {
         JsonRpcServer rpcServer = new JsonRpcServer();
 
         // WebSocket endpoint
-        webSocket("/dataListener", CoreWebSocket.class);
+        Spark.webSocket("/dataListener", CoreWebSocket.class);
 
         System.out.println(String.format("WebSocket endpoint listening on wss://localhost:%d/dataListener", port));
 
         // HTTPS POST routing
-        post("/", (request, response) -> {
+        Spark.post("/", (request, response) -> {
             String jsonRequest = request.body();
             return rpcServer.handle(jsonRequest, coreService);
         });

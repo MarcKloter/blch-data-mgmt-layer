@@ -367,11 +367,9 @@ public class CoreService implements Core {
     }
 
     private Payload parsePayload(Account account, ParsedFrame frame) {
-        byte[] encPayload = frame.getEncryptedPayload();
-
         Payload payload;
         try {
-            byte[] decPayload = Crypto.symmetricallyDecrypt(frame.getCapability(), encPayload);
+            byte[] decPayload = Crypto.symmetricallyDecrypt(frame.getCapability(), frame.getEncryptedPayload());
             payload = new ProtocolBufferSerializer().deserializePayload(decPayload);
         } catch (IllegalArgumentException e) {
             // TODO: log String.format("The payload could not be decrypted: %s",  e.getMessage());

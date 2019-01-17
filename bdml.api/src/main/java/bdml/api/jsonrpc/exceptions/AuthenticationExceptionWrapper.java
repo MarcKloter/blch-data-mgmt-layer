@@ -1,4 +1,4 @@
-package bdml.core.jsonrpc.exceptions;
+package bdml.api.jsonrpc.exceptions;
 
 import com.github.arteam.simplejsonrpc.core.annotation.JsonRpcError;
 

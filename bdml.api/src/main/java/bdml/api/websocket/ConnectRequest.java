@@ -1,4 +1,4 @@
-package bdml.core.websocket;
+package bdml.api.websocket;
 
 import bdml.core.domain.Account;
 import bdml.core.domain.Subject;

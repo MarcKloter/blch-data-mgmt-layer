@@ -1,4 +1,4 @@
-package bdml.core.jsonrpc.types;
+package bdml.api.jsonrpc.types;
 
 import bdml.core.domain.Account;
 import bdml.core.domain.Subject;

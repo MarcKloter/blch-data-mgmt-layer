@@ -1,6 +1,5 @@
 import bdml.core.domain.Capability;
 import bdml.core.helper.Crypto;
-import bdml.services.exceptions.MisconfigurationException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;

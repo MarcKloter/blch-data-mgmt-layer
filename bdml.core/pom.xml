@@ -27,53 +27,6 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
             </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-shade-plugin</artifactId>
-                <version>3.2.1</version>
-                <executions>
-                    <execution>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>shade</goal>
-                        </goals>
-                        <configuration>
-                            <outputDirectory>${project.package.outputDirectory}</outputDirectory>
-                            <finalName>${project.parent.artifactId}-${project.parent.version}</finalName>
-                            <filters>
-                                <filter>
-                                    <artifact>*:*</artifact>
-                                    <excludes>
-                                        <!-- exclude manifest signature files -->
-                                        <exclude>META-INF/*.SF</exclude>
-                                        <exclude>META-INF/*.DSA</exclude>
-                                        <exclude>META-INF/*.RSA</exclude>
-                                        <!-- exclude keystore files -->
-                                        <exclude>/*.jks</exclude>
-                                    </excludes>
-                                </filter>
-                            </filters>
-                            <!-- Exclude BC provider as the JAR will get unsigned and thus unusable -->
-                            <artifactSet>
-                                <excludes>
-                                    <exclude>org.bouncycastle:bcprov-jdk15on</exclude>
-                                </excludes>
-                            </artifactSet>
-                            <transformers>
-                                <!-- main class -->
-                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <manifestEntries>
-                                        <Main-Class>bdml.core.Starter</Main-Class>
-                                        <Class-Path>bcprov-jdk15on-1.60.jar</Class-Path>
-                                    </manifestEntries>
-                                </transformer>
-                            </transformers>
-                            <createDependencyReducedPom>false</createDependencyReducedPom>
-                            <shadedArtifactAttached>true</shadedArtifactAttached>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
             <!-- Copy the signed BC provider JAR to the output folder -->
             <plugin>
                 <artifactId>maven-dependency-plugin</artifactId>
@@ -124,29 +77,11 @@
             <artifactId>commons-codec</artifactId>
             <version>1.11</version>
         </dependency>
-        <!-- https://mvnrepository.com/artifact/com.github.arteam/simple-json-rpc-server -->
-        <dependency>
-            <groupId>com.github.arteam</groupId>
-            <artifactId>simple-json-rpc-server</artifactId>
-            <version>0.9</version>
-        </dependency>
-        <!-- https://mvnrepository.com/artifact/com.sparkjava/spark-core -->
-        <dependency>
-            <groupId>com.sparkjava</groupId>
-            <artifactId>spark-core</artifactId>
-            <version>2.8.0</version>
-        </dependency>
         <!-- https://mvnrepository.com/artifact/org.slf4j/slf4j-simple -->
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-simple</artifactId>
             <version>1.7.25</version>
-        </dependency>
-        <!-- https://mvnrepository.com/artifact/commons-cli/commons-cli -->
-        <dependency>
-            <groupId>commons-cli</groupId>
-            <artifactId>commons-cli</artifactId>
-            <version>1.4</version>
         </dependency>
         <!-- https://mvnrepository.com/artifact/com.h2database/h2 -->
         <dependency>

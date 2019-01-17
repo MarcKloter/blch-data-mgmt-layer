@@ -21,7 +21,8 @@
 		<module>bdml.keyserver</module>
 		<module>bdml.blockchain</module>
 		<module>bdml.services</module>
-    </modules>
+		<module>bdml.api</module>
+	</modules>
 
 	<dependencyManagement>
 		<dependencies>

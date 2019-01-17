@@ -1,4 +1,4 @@
-package bdml.core.websocket;
+package bdml.api.websocket;
 
 import bdml.core.CoreService;
 import bdml.core.Core;

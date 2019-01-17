@@ -76,10 +76,10 @@ java -jar blch-data-mgmt-layer-1.0.0.jar --keystore keystore.jks --password <pas
 Development Note: While using self-signed certificates, remember to adjust SSL verification. 
 
 ### Running the JSON-RPC Endpoint within an IDE
-To run the JSON-RPC Endpoint in an IDE, the `bdml.core/Starter` class requires the parameters from above as program arguments (in this example the `.jks` file is located in the resources directory, the path is relative to the `blch-data-mgmt-layer` project directory):
+To run the JSON-RPC Endpoint in an IDE, the `bdml.api/Starter` class requires the parameters from above as program arguments (in this example the `.jks` file is located in the resources directory, the path is relative to the `blch-data-mgmt-layer` project directory):
 
 ```
--k bdml.core/src/main/resources/keystore.jks -p <password>
+-k bdml.api/src/main/resources/keystore.jks -p <password>
 ```
 
 ## Configuration

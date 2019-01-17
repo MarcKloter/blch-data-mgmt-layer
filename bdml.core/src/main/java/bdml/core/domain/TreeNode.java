@@ -1,12 +1,8 @@
 package bdml.core.domain;
 
-import bdml.core.jsonrpc.serializer.TreeNodeSerializer;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-
 import java.util.HashSet;
 import java.util.Set;
 
-@JsonSerialize(using = TreeNodeSerializer.class)
 public class TreeNode<T> {
     private T value;
     private Set<TreeNode<T>> children;

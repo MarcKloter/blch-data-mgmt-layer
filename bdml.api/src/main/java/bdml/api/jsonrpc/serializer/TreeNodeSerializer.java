@@ -1,4 +1,4 @@
-package bdml.core.jsonrpc.serializer;
+package bdml.api.jsonrpc.serializer;
 
 import bdml.core.domain.DataIdentifier;
 import bdml.core.domain.TreeNode;

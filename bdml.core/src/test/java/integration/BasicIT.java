@@ -9,7 +9,8 @@ import bdml.core.domain.Data;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
-import spark.utils.Assert;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class BasicIT {
@@ -39,12 +40,12 @@ public class BasicIT {
 
     @Test
     public void Store_And_Retrieve_Data() throws AuthenticationException {
-        Assert.notNull(account1);
+        assertNotNull(account1);
 
         DataIdentifier identifier = core.storeData(DATA_1, account1);
 
         Data result = core.getData(identifier, account1);
-        Assert.notNull(result);
-        Assert.isTrue(result.getData().equals(DATA_1.getData()), "the data returned does not match the data stored");
+        assertNotNull(result);
+        assertEquals(result.getData(), DATA_1.getData(), "the data returned does not match the data stored");
     }
 }
