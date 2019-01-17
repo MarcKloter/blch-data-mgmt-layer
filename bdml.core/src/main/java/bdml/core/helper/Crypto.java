@@ -6,22 +6,24 @@ import java.util.Arrays;
 import bdml.core.domain.Capability;
 import bdml.services.exceptions.MisconfigurationException;
 import javax.crypto.Cipher;
-import javax.crypto.spec.GCMParameterSpec;
+import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
 public class Crypto {
-    // TODO: load default.application.properties config
     private static final String HASH_FUNCTION = "SHA-256";
     private static final String SYMMETRIC_ALGORITHM = "AES";
-    private static final String SYMMETRIC_CIPHER = "AES/GCM/NoPadding";
-    private static final int AUTHENTICATION_TAG_SIZE = 128;
-    private static final int IV_BYTES = 12;
+    // using PKCS#7 padding (identifier in the SUN provider misleading)
+    private static final String SYMMETRIC_CIPHER = "AES/CBC/PKCS5Padding";
+    private static final int IV_BYTES = 16;
 
     /**
+     * Symmetrically encrypts the given plaintext using the provided {@code capability} as key.
+     * The cipher used is defined in {@link Crypto#SYMMETRIC_CIPHER}.
      *
-     * @param capability
-     * @param plaintext
-     * @return
+     * @param capability {@link Capability#toByteArray()} bytes to use as key
+     * @param plaintext byte array containing the plaintext
+     * @return Byte array containing the ciphertext || initialization vector.
+     * @throws MisconfigurationException if there is an error with the configuration (eg. missing security provider)
      */
     public static byte[] symmetricallyEncrypt(Capability capability, byte[] plaintext) {
         SecretKeySpec key = new SecretKeySpec(capability.toByteArray(), SYMMETRIC_ALGORITHM);
@@ -29,11 +31,11 @@ public class Crypto {
         // generate initialization vector
         byte[] ivBytes = new byte[IV_BYTES];
         new SecureRandom().nextBytes(ivBytes);
-        GCMParameterSpec parameterSpec = new GCMParameterSpec(AUTHENTICATION_TAG_SIZE, ivBytes);
+        IvParameterSpec iv = new IvParameterSpec(ivBytes);
 
         try {
             Cipher cipher = Cipher.getInstance(SYMMETRIC_CIPHER);
-            cipher.init(Cipher.ENCRYPT_MODE, key, parameterSpec);
+            cipher.init(Cipher.ENCRYPT_MODE, key, iv);
             byte[] ciphertext = cipher.doFinal(plaintext);
 
             // append iv to ciphertext
@@ -44,23 +46,27 @@ public class Crypto {
     }
 
     /**
+     * Symmetrically decrypts the given ciphertext using the provided {@code capability} as key.
+     * The cipher used is defined in {@link Crypto#SYMMETRIC_CIPHER}.
      *
-     * @param capability
-     * @param ciphertext
-     * @return
+     * @param capability {@link Capability#toByteArray()} bytes to use as key
+     * @param ciphertext byte array containing the ciphertex
+     * @return Byte array containing the plaintext || initialization vector.
+     * @throws IllegalArgumentException if the provided capability cannot be used as a valid key.
+     * @throws MisconfigurationException if there is an error with the configuration (eg. missing security provider)
      */
     public static byte[] symmetricallyDecrypt(Capability capability, byte[] ciphertext) {
         SecretKeySpec key = new SecretKeySpec(capability.toByteArray(), SYMMETRIC_ALGORITHM);
 
-        // read initialization vector from ciphertext
+        // separate initialization vector from ciphertext
         int index = ciphertext.length - IV_BYTES;
         byte[] ivBytes = Arrays.copyOfRange(ciphertext, index, ciphertext.length);
+        IvParameterSpec iv = new IvParameterSpec(ivBytes);
         ciphertext = Arrays.copyOf(ciphertext, index);
-        GCMParameterSpec parameterSpec = new GCMParameterSpec(AUTHENTICATION_TAG_SIZE, ivBytes);
 
         try {
             Cipher cipher = Cipher.getInstance(SYMMETRIC_CIPHER);
-            cipher.init(Cipher.DECRYPT_MODE, key, parameterSpec);
+            cipher.init(Cipher.DECRYPT_MODE, key, iv);
             return cipher.doFinal(ciphertext);
         } catch(InvalidKeyException e) {
             throw new IllegalArgumentException(e.getMessage());
