@@ -12,15 +12,18 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class CryptoTest {
-    private Capability capability;
+    private Capability capability1;
+    private Capability capability2;
     private byte[] plainBytes1;
     private static final int IV_BYTES = 16;
 
     @BeforeAll
     public void setup() {
-        String keyBase64 = "Vy4jawu/JPkG36pjCoEEGR2luox905qHyejhkFbXBj8=";
-        byte[] key = Base64.getDecoder().decode(keyBase64);
-        this.capability = new Capability(key);
+        byte[] key1 = Base64.getDecoder().decode("Vy4jawu/JPkG36pjCoEEGR2luox905qHyejhkFbXBj8=");
+        this.capability1 = new Capability(key1);
+
+        byte[] key2 = Base64.getDecoder().decode("dMoSbsneUmQntUtkikCTsj0I/2vBI+1aOR84PgAld+4=");
+        this.capability2 = new Capability(key2);
 
         String plaintext = "The Magic Words are Squeamish Ossifrage";
         this.plainBytes1 = plaintext.getBytes(StandardCharsets.UTF_8);
@@ -28,15 +31,23 @@ public class CryptoTest {
 
     @Test
     public void Symmetrically_Encryt_And_Decrypt() {
-        byte[] cipherBytes = Crypto.symmetricallyEncrypt(capability, plainBytes1);
-        byte[] decryptedBytes = Crypto.symmetricallyDecrypt(capability, cipherBytes);
+        byte[] cipherBytes = Crypto.symmetricallyEncrypt(capability1, plainBytes1);
+        byte[] decryptedBytes = Crypto.symmetricallyDecrypt(capability1, cipherBytes);
 
         assertArrayEquals(plainBytes1, decryptedBytes);
     }
 
     @Test
+    public void Symmetrically_Decrypt_Wrong_Key() {
+        byte[] cipherBytes = Crypto.symmetricallyEncrypt(capability1, plainBytes1);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> Crypto.symmetricallyDecrypt(capability2, cipherBytes));
+        System.out.println(String.format("Exception message: %s", exception.getMessage()));
+    }
+
+    @Test
     public void Symmetrically_Decrypt_Corrupt_Padding() {
-        byte[] cipherBytes = Crypto.symmetricallyEncrypt(capability, plainBytes1);
+        byte[] cipherBytes = Crypto.symmetricallyEncrypt(capability1, plainBytes1);
         int size = cipherBytes.length;
 
         // swap last two bytes of ciphertext (cipherBytes = ciphertext || initialization vector)
@@ -47,6 +58,7 @@ public class CryptoTest {
             else corruptCipherBytes[i] = cipherBytes[i];
         }
 
-        assertThrows(MisconfigurationException.class, () -> Crypto.symmetricallyDecrypt(capability, corruptCipherBytes));
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> Crypto.symmetricallyDecrypt(capability1, corruptCipherBytes));
+        System.out.println(String.format("Exception message: %s", exception.getMessage()));
     }
 }

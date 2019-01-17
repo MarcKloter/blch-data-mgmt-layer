@@ -5,7 +5,10 @@ import java.util.Arrays;
 
 import bdml.core.domain.Capability;
 import bdml.services.exceptions.MisconfigurationException;
+
+import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
@@ -52,7 +55,7 @@ public class Crypto {
      * @param capability {@link Capability#toByteArray()} bytes to use as key
      * @param ciphertext byte array containing the ciphertex
      * @return Byte array containing the plaintext || initialization vector.
-     * @throws IllegalArgumentException if the provided capability cannot be used as a valid key.
+     * @throws IllegalArgumentException if the given {@code ciphertext} could not be decrypted using the provided {@code capability}.
      * @throws MisconfigurationException if there is an error with the configuration (eg. missing security provider)
      */
     public static byte[] symmetricallyDecrypt(Capability capability, byte[] ciphertext) {
@@ -68,7 +71,7 @@ public class Crypto {
             Cipher cipher = Cipher.getInstance(SYMMETRIC_CIPHER);
             cipher.init(Cipher.DECRYPT_MODE, key, iv);
             return cipher.doFinal(ciphertext);
-        } catch(InvalidKeyException e) {
+        } catch(InvalidKeyException | IllegalBlockSizeException | BadPaddingException e) {
             throw new IllegalArgumentException(e.getMessage());
         } catch (GeneralSecurityException e) {
             throw new MisconfigurationException(e.getMessage());
