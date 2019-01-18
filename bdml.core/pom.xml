@@ -27,6 +27,41 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.2.1</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <outputFile>${project.package.outputDirectory}/${project.artifactId}-${project.version}.jar</outputFile>
+                            <filters>
+                                <filter>
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <!-- exclude manifest signature files -->
+                                        <exclude>META-INF/*.SF</exclude>
+                                        <exclude>META-INF/*.DSA</exclude>
+                                        <exclude>META-INF/*.RSA</exclude>
+                                        <!-- exclude keystore files -->
+                                        <exclude>/*.jks</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
+                            <!-- Exclude BC provider as the JAR will get unsigned and thus unusable -->
+                            <artifactSet>
+                                <excludes>
+                                    <exclude>org.bouncycastle:bcprov-jdk15on</exclude>
+                                </excludes>
+                            </artifactSet>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
 
@@ -54,6 +89,7 @@
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-api</artifactId>
+            <scope>test</scope>
         </dependency>
         <!-- https://mvnrepository.com/artifact/commons-codec/commons-codec -->
         <dependency>

@@ -16,6 +16,7 @@
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<project.package.outputDirectory>../target</project.package.outputDirectory>
 		<!-- SonarQube: ignore dummy files -->
 		<sonar.exclusions>**/*Dummy*</sonar.exclusions>
 	</properties>
@@ -25,6 +26,22 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
+			</plugin>
+			<!-- Copy the signed BC provider JAR to the output folder -->
+			<plugin>
+				<artifactId>maven-dependency-plugin</artifactId>
+				<executions>
+					<execution>
+						<phase>prepare-package</phase>
+						<goals>
+							<goal>copy-dependencies</goal>
+						</goals>
+						<configuration>
+							<includeArtifactIds>bcprov-jdk15on</includeArtifactIds>
+							<outputDirectory>${project.package.outputDirectory}</outputDirectory>
+						</configuration>
+					</execution>
+				</executions>
 			</plugin>
 		</plugins>
 	</build>

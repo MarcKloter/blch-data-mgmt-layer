@@ -37,8 +37,7 @@
                             <goal>shade</goal>
                         </goals>
                         <configuration>
-                            <outputDirectory>${project.package.outputDirectory}</outputDirectory>
-                            <finalName>${project.parent.artifactId}-${project.parent.version}</finalName>
+                            <outputFile>${project.package.outputDirectory}/${project.parent.artifactId}-${project.parent.version}.jar</outputFile>
                             <filters>
                                 <filter>
                                     <artifact>*:*</artifact>
@@ -67,24 +66,6 @@
                                     </manifestEntries>
                                 </transformer>
                             </transformers>
-                            <createDependencyReducedPom>false</createDependencyReducedPom>
-                            <shadedArtifactAttached>true</shadedArtifactAttached>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <!-- Copy the signed BC provider JAR to the output folder -->
-            <plugin>
-                <artifactId>maven-dependency-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <phase>prepare-package</phase>
-                        <goals>
-                            <goal>copy-dependencies</goal>
-                        </goals>
-                        <configuration>
-                            <includeArtifactIds>bcprov-jdk15on</includeArtifactIds>
-                            <outputDirectory>${project.package.outputDirectory}</outputDirectory>
                         </configuration>
                     </execution>
                 </executions>
