@@ -3,6 +3,7 @@ package bdml.blockchain.parity;
 import bdml.blockchain.web3j.EventStorage;
 import bdml.services.exceptions.MisconfigurationException;
 import bdml.services.helper.FrameListener;
+import com.fasterxml.jackson.databind.ser.std.StdKeySerializers;
 import io.reactivex.Flowable;
 import io.reactivex.disposables.Disposable;
 import org.apache.commons.codec.DecoderException;
@@ -19,6 +20,7 @@ import org.web3j.protocol.core.DefaultBlockParameterName;
 import org.web3j.protocol.core.DefaultBlockParameterNumber;
 import org.web3j.protocol.core.methods.request.EthFilter;
 import org.web3j.protocol.core.methods.response.EthBlockNumber;
+import org.web3j.protocol.core.methods.response.EthGetCode;
 import org.web3j.protocol.core.methods.response.EthLog;
 import org.web3j.protocol.core.methods.response.TransactionReceipt;
 import org.web3j.protocol.http.HttpService;
@@ -49,6 +51,27 @@ public class ParityAdapter {
     public ParityAdapter(String url, String contractAddress) {
         this.web3j = Admin.build(new HttpService(url));
         this.CONTRACT_ADDRESS = Collections.singletonList(contractAddress);
+        checkContract();
+    }
+
+    /**
+     * Checks whether every address in the CONTRACT_ADDRESS list is a deployed smart contract using eth_getCode.
+     * https://wiki.parity.io/JSONRPC-eth-module#eth_getcode
+     *
+     * @throws MisconfigurationException if one of the addresses does not contain contract code.
+     */
+    private void checkContract() {
+        for(String contractAddress : CONTRACT_ADDRESS) {
+            EthGetCode contract;
+            try {
+                contract = web3j.ethGetCode(contractAddress, DefaultBlockParameterName.LATEST).send();
+            } catch (IOException e) {
+                throw new MisconfigurationException(e.getMessage());
+            }
+
+            if(contract.getCode().equals("0x"))
+                throw new MisconfigurationException(String.format("The configured address: '%s' does not correspond to a smart contract.", contractAddress));
+        }
     }
 
     /**
