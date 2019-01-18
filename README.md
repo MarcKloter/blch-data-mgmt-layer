@@ -2,9 +2,9 @@
 
 ## Getting Started
 ### Building a JAR
-The `mvn package` phase of the `blch-data-mgmt-layer` root project will build an executable fat JAR into `blch-data-mgmt-layer/target/`. Next to it, there will also be a copy of the signed Bouncy Castle Provider JAR that is required to reside next to the blch-data-mgmt-layer JAR.  
+The `mvn package` phase of the `blch-data-mgmt-layer` root project will build an executable fat JAR `bdml-data-mgmt-layer-{version}` and a nonexecutable fat JAR `bdml.core-{version}` into `blch-data-mgmt-layer/target/`. Next to them, there will also be a signed copy of the Bouncy Castle Provider that is required to reside next to the blch-data-mgmt-layer JAR on exectuion.  
 
-The JAR can be executed to [start the JSON-RPC and WebSocket Endpoint](#JSON-RPC-and-WebSocket-Endpoint) or added to a Java project as external JAR.
+The executable JAR can be used to [start the JSON-RPC and WebSocket Endpoint](#JSON-RPC-and-WebSocket-Endpoint). The other can be added to a Java project to [use the Core service](#Using-the-Core-service).
 
 ### Parity
 This proof of concept is built to interact with [Parity Ethereum](https://www.parity.io/ethereum/) and requires the `eth` and `personal` modules.
