@@ -11,6 +11,9 @@ public class DataIdentifier {
     private final byte[] identifier;
 
     public DataIdentifier(byte[] identifier) {
+        if(identifier == null)
+            throw new DataIdentifierFormatException("The identifier cannot be null.");
+
         if (identifier.length != BYTES)
             throw new DataIdentifierFormatException(String.format("The given data identifier is %d bytes, expected %d bytes.", identifier.length, BYTES));
 

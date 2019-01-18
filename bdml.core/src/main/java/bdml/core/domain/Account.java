@@ -7,6 +7,12 @@ public class Account implements bdml.services.helper.Account {
     private final String password;
 
     public Account(Subject subject, String password) {
+        if(subject == null)
+            throw new IllegalArgumentException("The subject cannot be null.");
+
+        if(password == null)
+            throw new IllegalArgumentException("The password cannot be null.");
+
         this.subject = subject;
         this.password = password;
     }

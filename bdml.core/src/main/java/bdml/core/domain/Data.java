@@ -8,6 +8,9 @@ public class Data {
     private final Set<DataIdentifier> attachments;
 
     public Data(String data, Set<DataIdentifier> attachments) {
+        if(data == null)
+            throw new IllegalArgumentException("The data cannot be null.");
+
         this.data = data;
         this.attachments = attachments;
     }

@@ -10,6 +10,9 @@ public class Capability {
     private final DataIdentifier identifier;
 
     public Capability(byte[] capability) {
+        if(capability == null)
+            throw new CapabilityFormatException("The capability cannot be null.");
+
         if (capability.length != BYTES)
             throw new CapabilityFormatException(String.format("The given capability is %d bytes, expected %d bytes.", capability.length, BYTES));
 

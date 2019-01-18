@@ -16,6 +16,9 @@ public class Subject {
     private final byte[] subject;
 
     public Subject(byte[] subject) {
+        if(subject == null)
+            throw new SubjectFormatException("The subject cannot be null.");
+
         if (subject.length != BYTES)
             throw new SubjectFormatException(String.format("The given subject is %d bytes, expected %d bytes.", subject.length, BYTES));
 

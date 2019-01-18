@@ -12,6 +12,8 @@ public interface Core {
 	 *
 	 * @param password password for the new account
 	 * @return {@link Subject} of the new account.
+	 * @throws IllegalArgumentException if {@code password} is empty.
+	 * @throws NullPointerException if {@code password} is {@code null}.
 	 */
 	Subject createAccount(String password);
 
@@ -22,11 +24,13 @@ public interface Core {
 	 *
 	 * @param data {@link Data} to persist
 	 * @param account {@link Account} to interact as
-	 * @param subjects set of {@link Subject} to authorize
+	 * @param subjects set of {@link Subject} to authorize, can be {@code null}
 	 * @return {@link DataIdentifier} of the persisted data.
-	 * @throws NotAuthorizedException if {@code attachments} cannot be accessed by {@code account}.
 	 * @throws AuthenticationException if the {@link Account#getIdentifier()} and {@link Account#getPassword()}
 	 * combination do not correspond to an existing account.
+	 * @throws NotAuthorizedException if any {@link Data#getAttachments()} of {@code data} cannot be accessed by {@code account}.
+	 * @throws IllegalArgumentException if any {@link Data#getAttachments()} of {@code data} does not exist
+	 * @throws NullPointerException if {@code data} or {@code account} is {@code null}.
 	 */
 	DataIdentifier storeData(Data data, Account account, Set<Subject> subjects) throws AuthenticationException;
 
@@ -79,9 +83,11 @@ public interface Core {
 	 * @param id {@link DataIdentifier} of the data to retrieve
 	 * @param account {@link Account} to interact as
 	 * @return {@link Data} object identified by {@code id} or {@code null}.
-	 * @throws NotAuthorizedException if the data referenced by {@code id} cannot be accessed by {@code account}.
 	 * @throws AuthenticationException if the {@link Account#getIdentifier()} and {@link Account#getPassword()}
 	 * combination do not correspond to an existing account.
+	 * @throws NotAuthorizedException if the data referenced by {@code id} cannot be accessed by {@code account}.
+	 * @throws IllegalArgumentException if there was no data found identified by {@code identifier}.
+	 * @throws NullPointerException if {@code id} or {@code account} is {@code null}.
 	 */
 	Data getData(DataIdentifier id, Account account) throws AuthenticationException;
 
