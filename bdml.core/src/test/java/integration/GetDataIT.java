@@ -20,7 +20,7 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.*;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public class GetDataIT {
+class GetDataIT {
     //TODO: working directory currently is bdml.core
 
     private static final String PASSWORD_1 = "password1";
@@ -44,7 +44,7 @@ public class GetDataIT {
     private DataIdentifier identifier2;
 
     @BeforeAll
-    public void setup() throws AuthenticationException {
+    void setup() throws AuthenticationException {
         this.core = CoreService.getInstance();
 
         this.subject1 = core.createAccount(PASSWORD_1);
@@ -61,29 +61,29 @@ public class GetDataIT {
     }
 
     @Test
-    public void Null_DataIdentifier() {
+    void Null_DataIdentifier() {
         assertThrows(NullPointerException.class, () -> core.getData(null, account1));
     }
 
     @Test
-    public void Invalid_DataIdentifier() {
+    void Invalid_DataIdentifier() {
         DataIdentifier invalidIdentifier = DataIdentifier.decode("0".repeat(64));
         assertThrows(IllegalArgumentException.class, () -> core.getData(invalidIdentifier, account1));
     }
 
     @Test
-    public void Null_Account() {
+    void Null_Account() {
         assertThrows(NullPointerException.class, () -> core.getData(identifier1, null));
     }
 
     @Test
-    public void Invalid_Account() {
+    void Invalid_Account() {
         Account invalidAccount = new Account(subject1, "");
         assertThrows(AuthenticationException.class, () -> core.getData(identifier1, invalidAccount));
     }
 
     @Test
-    public void Get_Data() {
+    void Get_Data() {
         Data result1 = assertDoesNotThrow(() -> core.getData(identifier1, account1));
         assertNotNull(result1);
         assertEquals(result1.getData(), SIMPLE_DATA_1.getData());
@@ -94,13 +94,13 @@ public class GetDataIT {
     }
 
     @Test
-    public void Get_NotAuthorized_Data() {
+    void Get_NotAuthorized_Data() {
         assertThrows(NotAuthorizedException.class, () -> core.getData(identifier2, account1));
         assertThrows(NotAuthorizedException.class, () -> core.getData(identifier1, account2));
     }
 
     @Test
-    public void Get_Addressed_Data() {
+    void Get_Addressed_Data() {
         DataIdentifier identifier = assertDoesNotThrow(() -> core.storeData(SIMPLE_DATA_1, account1, Collections.singleton(subject2)));
 
         // assert that the account that called storeData can read the data
@@ -118,7 +118,7 @@ public class GetDataIT {
     }
 
     @Test
-    public void Get_Data_With_Attachment() {
+    void Get_Data_With_Attachment() {
         Set<DataIdentifier> attachment = Set.of(identifier1);
         Data dataWithAttachment = new Data(SIMPLE_DATA_1.getData(), attachment);
         DataIdentifier identifier = assertDoesNotThrow(() -> core.storeData(dataWithAttachment, account1));

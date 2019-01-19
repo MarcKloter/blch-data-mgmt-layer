@@ -10,14 +10,14 @@ import java.util.Base64;
 import static org.junit.jupiter.api.Assertions.*;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public class CryptoTest {
+class CryptoTest {
     private Capability capability1;
     private Capability capability2;
     private byte[] plainBytes1;
     private static final int IV_BYTES = 16;
 
     @BeforeAll
-    public void setup() {
+    void setup() {
         byte[] key1 = Base64.getDecoder().decode("Vy4jawu/JPkG36pjCoEEGR2luox905qHyejhkFbXBj8=");
         this.capability1 = new Capability(key1);
 
@@ -29,7 +29,7 @@ public class CryptoTest {
     }
 
     @Test
-    public void Symmetrically_Encryt_And_Decrypt() {
+    void Symmetrically_Encryt_And_Decrypt() {
         byte[] cipherBytes = Crypto.symmetricallyEncrypt(capability1, plainBytes1);
         byte[] decryptedBytes = Crypto.symmetricallyDecrypt(capability1, cipherBytes);
 
@@ -37,7 +37,7 @@ public class CryptoTest {
     }
 
     @Test
-    public void Symmetrically_Decrypt_Wrong_Key() {
+    void Symmetrically_Decrypt_Wrong_Key() {
         byte[] cipherBytes = Crypto.symmetricallyEncrypt(capability1, plainBytes1);
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> Crypto.symmetricallyDecrypt(capability2, cipherBytes));
@@ -45,7 +45,7 @@ public class CryptoTest {
     }
 
     @Test
-    public void Symmetrically_Decrypt_Corrupt_Padding() {
+    void Symmetrically_Decrypt_Corrupt_Padding() {
         byte[] cipherBytes = Crypto.symmetricallyEncrypt(capability1, plainBytes1);
         int size = cipherBytes.length;
 

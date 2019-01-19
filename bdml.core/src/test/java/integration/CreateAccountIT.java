@@ -10,7 +10,7 @@ import org.junit.jupiter.api.TestInstance;
 import static org.junit.jupiter.api.Assertions.*;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public class CreateAccountIT {
+class CreateAccountIT {
     //TODO: working directory currently is bdml.core
 
     private static final String PASSWORD = "password";
@@ -18,23 +18,23 @@ public class CreateAccountIT {
     private Core core;
 
     @BeforeAll
-    public void setup() {
+    void setup() {
         this.core = CoreService.getInstance();
     }
 
     @Test
-    public void Create_Account() {
+    void Create_Account() {
         Subject subject = core.createAccount(PASSWORD);
         assertNotNull(subject);
     }
 
     @Test
-    public void Empty_Password() {
+    void Empty_Password() {
         assertThrows(IllegalArgumentException.class, () -> core.createAccount(""));
     }
 
     @Test
-    public void Null_Password() {
+    void Null_Password() {
         assertThrows(NullPointerException.class, () -> core.createAccount(null));
     }
 }
