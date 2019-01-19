@@ -27,6 +27,8 @@ import bdml.core.domain.DataListener;
 import bdml.core.domain.Account;
 import bdml.services.helper.FrameListener;
 import org.apache.commons.codec.binary.Hex;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public class CoreService implements Core {
     private static final int VERSION = 1;
@@ -35,6 +37,8 @@ public class CoreService implements Core {
 
     private static final String APP_CONFIG = "application.properties";
     private static final String DEFAULT_CONFIG = "default.application.properties";
+
+    private static final Logger LOGGER = LogManager.getLogger(CoreService.class);
 
     private final Blockchain blockchain;
     private final KeyServer keyServer;
@@ -259,9 +263,6 @@ public class CoreService implements Core {
         // CAP = H(PAYLOAD)
         Capability capability = Capability.of(serializePayload);
 
-        // ID = H(CAP)
-        DataIdentifier identifier = capability.getIdentifier();
-
         List<byte[]> encryptedCapability = encryptCapability(capability, recipients);
 
         byte[] encryptedPayload = Crypto.symmetricallyEncrypt(capability, serializePayload);
@@ -306,12 +307,12 @@ public class CoreService implements Core {
         try {
             frame = new ProtocolBufferSerializer().deserializeFrame(serializedFrame);
         } catch (DeserializationException e) {
-            // TODO: log String.format("The format of the frame is invalid: %s", e.getMessage());
+            LOGGER.error(String.format("Attempted to deserialize a malformed frame: %s", e.getMessage()));
             return null;
         }
 
         if (frame.getVersion() != VERSION) {
-            // TODO: log String.format("Frame version is %d, expected %s", frame.getVersion(), VERSION);
+            LOGGER.error(String.format("Attempted to deserialize a frame of version: %s, expected: %s", frame.getVersion(), VERSION));
             return null;
         }
 
@@ -372,10 +373,10 @@ public class CoreService implements Core {
             byte[] decPayload = Crypto.symmetricallyDecrypt(frame.getCapability(), frame.getEncryptedPayload());
             payload = new ProtocolBufferSerializer().deserializePayload(decPayload);
         } catch (IllegalArgumentException e) {
-            // TODO: log String.format("The payload could not be decrypted: %s",  e.getMessage());
+            LOGGER.error(String.format("Failed to decrypt the payload of frame '%s': %s", frame.getIdentifier().toString(), e.getMessage()));
             return null;
         } catch (DeserializationException e) {
-            // TODO: log String.format("The format of the payload is invalid: %s",  e.getMessage());
+            LOGGER.error(String.format("Attempted to deserialize the payload of frame '%s': %s", frame.getIdentifier().toString(), e.getMessage()));
             return null;
         }
 
@@ -411,7 +412,7 @@ public class CoreService implements Core {
                         result.add(identifier);
                 }
             } catch (DataIdentifierFormatException e) {
-                // TODO log that there are corrupt identifiers on the blockchain
+                LOGGER.error(String.format("Received an invalid identifier '%s' from blockchain: %s", Hex.encodeHexString(rawIdentifier), e.getMessage()));
             } catch (NotAuthorizedException e) {
                 // the frame was not addressed to the given account nor a known attachment
             }
@@ -465,7 +466,7 @@ public class CoreService implements Core {
             try {
                 identifier = new DataIdentifier(rawIdentifier);
             } catch (DataIdentifierFormatException e) {
-                // TODO: log "the blockchain listener has sent an invalid data identifier: "
+                LOGGER.error(String.format("Received an invalid identifier '%s' from blockchain: %s", Hex.encodeHexString(rawIdentifier), e.getMessage()));
                 return;
             }
 
