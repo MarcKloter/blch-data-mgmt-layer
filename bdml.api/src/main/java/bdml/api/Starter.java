@@ -4,10 +4,13 @@ import bdml.api.jsonrpc.CoreProxy;
 import bdml.api.websocket.CoreWebSocket;
 import com.github.arteam.simplejsonrpc.server.JsonRpcServer;
 import org.apache.commons.cli.*;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import spark.Spark;
 
 public class Starter {
-    private final static String DEFAULT_PORT = "8550";
+    private static final String DEFAULT_PORT = "8550";
+    private static final Logger LOGGER = LogManager.getLogger(Starter.class);
 
     public static void main(String[] args) {
         CommandLine cmd = handleCLIArguments(args);
@@ -35,7 +38,7 @@ public class Starter {
         // WebSocket endpoint
         Spark.webSocket("/dataListener", CoreWebSocket.class);
 
-        System.out.println(String.format("WebSocket endpoint listening on wss://localhost:%d/dataListener", port));
+        LOGGER.info(String.format("WebSocket endpoint listening on wss://localhost:%d/dataListener", port));
 
         // HTTPS POST routing
         Spark.post("/", (request, response) -> {
@@ -43,7 +46,7 @@ public class Starter {
             return rpcServer.handle(jsonRequest, coreService);
         });
 
-        System.out.println(String.format("JSON-RPC API endpoint listening on https://localhost:%d", port));
+        LOGGER.info(String.format("JSON-RPC API endpoint listening on https://localhost:%d", port));
     }
 
     /**
@@ -76,7 +79,7 @@ public class Starter {
         try {
             cmd = parser.parse(options, args);
         } catch(ParseException e) {
-            System.out.println(e.getMessage());
+            LOGGER.error(e.getMessage());
             formatter.printHelp("utility-name", options);
             System.exit(1);
         }
