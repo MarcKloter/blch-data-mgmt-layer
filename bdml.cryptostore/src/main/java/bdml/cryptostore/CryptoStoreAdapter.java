@@ -96,6 +96,7 @@ public class CryptoStoreAdapter implements CryptographicStore {
 
         // getCapability private key persisted for the given public key and secret combination
         byte[] decodedKey = keyPairs.get(publicKey, secret);
+        if(decodedKey == null) return null;
 
         // split ciphertext into ciphertext and nonce
         int index = ciphertext.length - 16;
