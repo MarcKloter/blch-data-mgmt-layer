@@ -50,6 +50,7 @@ public interface Core {
 	 * @return Set of {@link DataIdentifier}.
 	 * @throws AuthenticationException if the {@link Account#getIdentifier()} and {@link Account#getPassword()}
 	 * combination do not correspond to an existing account.
+	 * @throws NullPointerException if {@code account} is {@code null}.
 	 */
 	Set<DataIdentifier> listData(Account account) throws AuthenticationException;
 
@@ -62,6 +63,7 @@ public interface Core {
 	 * @return Set of {@link DataIdentifier}.
 	 * @throws AuthenticationException if the {@link Account#getIdentifier()} and {@link Account#getPassword()}
 	 * combination do not correspond to an existing account.
+	 * @throws NullPointerException if {@code account} is {@code null}.
 	 */
 	Set<DataIdentifier> listDataChanges(Account account) throws AuthenticationException;
 
@@ -74,6 +76,8 @@ public interface Core {
 	 * @return {@link TreeNode<DataIdentifier>} object that hierarchically contains all linked attachments.
 	 * @throws AuthenticationException if the {@link Account#getIdentifier()} and {@link Account#getPassword()}
 	 * combination do not correspond to an existing account.
+	 * @throws IllegalArgumentException if there was no data found identified by {@code identifier}.
+	 * @throws NullPointerException if {@code id} or {@code account} is {@code null}.
 	 */
 	TreeNode<DataIdentifier> listAttachments(DataIdentifier id, Account account) throws AuthenticationException;
 
@@ -101,6 +105,7 @@ public interface Core {
 	 * @return 8 bytes subscription handle in hex string representation.
 	 * @throws AuthenticationException if the {@link Account#getIdentifier()} and {@link Account#getPassword()}
 	 * combination do not correspond to an existing account.
+	 * @throws NullPointerException if {@code account} or {@code dataListener} is {@code null}.
 	 */
 	String registerDataListener(Account account, DataListener dataListener) throws AuthenticationException;
 
@@ -111,6 +116,7 @@ public interface Core {
 	 * @param handle 8 bytes subscription handle in hex string representation
 	 * @throws AuthenticationException if the {@link Account#getIdentifier()} and {@link Account#getPassword()}
 	 * combination do not correspond to an existing account.
+	 * @throws NullPointerException if {@code account} or {@code handle} is {@code null}.
 	 */
 	void unregisterDataListener(Account account, String handle) throws AuthenticationException;
 }

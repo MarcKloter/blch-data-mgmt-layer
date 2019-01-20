@@ -152,6 +152,7 @@ public class CoreService implements Core {
 
     @Override
     public String registerDataListener(Account account, DataListener dataListener) throws AuthenticationException {
+        Assert.requireNonNull(dataListener, "dataListener");
         AuthenticatedAccount caller = authenticate(account);
 
         byte[] handleBytes = new byte[LISTENER_HANDLE_BYTES];
@@ -170,6 +171,7 @@ public class CoreService implements Core {
 
     @Override
     public void unregisterDataListener(Account account, String handle) throws AuthenticationException {
+        Assert.requireNonNull(handle, "handle");
         AuthenticatedAccount caller = authenticate(account);
 
         ConcurrentHashMap<String, DataListener> accountListeners = handleToListener.getOrDefault(caller, null);
