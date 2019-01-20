@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Configuration status="warn" name="BDMLCore" packages="">
     <Appenders>
-        <File name="CoreService" fileName="logs/bdml.core.log">
+        <File name="CoreService" fileName="bdml-data/logs/bdml.core.log">
             <PatternLayout>
                 <Pattern>%d %p %c{1.} [%t] %m%n</Pattern>
             </PatternLayout>

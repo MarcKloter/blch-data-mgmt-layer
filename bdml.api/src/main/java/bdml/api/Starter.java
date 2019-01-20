@@ -30,9 +30,21 @@ public class Starter {
 
         Spark.secure(keystoreFile, keystorePassword, truststoreFile, truststorePassword);
 
+        Spark.initExceptionHandler((e) -> {
+            LOGGER.error(e.getMessage());
+            System.exit(1);
+        });
+
         // TODO: exceptions thrown by core proxy are being e.printStackTrace()'ed
 
-        CoreProxy coreService = new CoreProxy();
+        CoreProxy coreService;
+        try {
+            coreService = new CoreProxy();
+        } catch (ExceptionInInitializerError e) {
+            LOGGER.error(e.getCause().getMessage());
+            return;
+        }
+
         JsonRpcServer rpcServer = new JsonRpcServer();
 
         // WebSocket endpoint

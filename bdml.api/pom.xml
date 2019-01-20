@@ -47,7 +47,9 @@
                                         <exclude>META-INF/*.DSA</exclude>
                                         <exclude>META-INF/*.RSA</exclude>
                                         <!-- exclude keystore files -->
-                                        <exclude>/*.jks</exclude>
+                                        <exclude>*.jks</exclude>
+                                        <!-- exclude application.properties files -->
+                                        <exclude>application.properties</exclude>
                                     </excludes>
                                 </filter>
                             </filters>
