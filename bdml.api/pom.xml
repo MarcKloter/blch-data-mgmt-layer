@@ -7,7 +7,7 @@
     <parent>
         <artifactId>blch-data-mgmt-layer</artifactId>
         <groupId>bdml</groupId>
-        <version>1.0.0</version>
+        <version>0.2.0</version>
     </parent>
 
     <artifactId>bdml.api</artifactId>
@@ -79,7 +79,7 @@
         <dependency>
             <groupId>bdml</groupId>
             <artifactId>bdml.core</artifactId>
-            <version>1.0.0</version>
+            <version>0.2.0</version>
         </dependency>
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>

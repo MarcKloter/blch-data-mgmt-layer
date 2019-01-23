@@ -7,7 +7,7 @@
     <parent>
         <artifactId>blch-data-mgmt-layer</artifactId>
         <groupId>bdml</groupId>
-        <version>1.0.0</version>
+        <version>0.2.0</version>
     </parent>
 
     <artifactId>bdml.services</artifactId>

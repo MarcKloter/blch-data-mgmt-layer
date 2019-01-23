@@ -8,7 +8,7 @@
     <parent>
         <groupId>bdml</groupId>
         <artifactId>blch-data-mgmt-layer</artifactId>
-        <version>1.0.0</version>
+        <version>0.2.0</version>
     </parent>
 
     <artifactId>bdml.core</artifactId>
@@ -69,22 +69,22 @@
         <dependency>
             <groupId>bdml</groupId>
             <artifactId>bdml.services</artifactId>
-            <version>1.0.0</version>
+            <version>0.2.0</version>
         </dependency>
         <dependency>
             <groupId>bdml</groupId>
             <artifactId>bdml.blockchain</artifactId>
-            <version>1.0.0</version>
+            <version>0.2.0</version>
         </dependency>
         <dependency>
             <groupId>bdml</groupId>
             <artifactId>bdml.cryptostore</artifactId>
-            <version>1.0.0</version>
+            <version>0.2.0</version>
         </dependency>
         <dependency>
             <groupId>bdml</groupId>
             <artifactId>bdml.keyserver</artifactId>
-            <version>1.0.0</version>
+            <version>0.2.0</version>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
