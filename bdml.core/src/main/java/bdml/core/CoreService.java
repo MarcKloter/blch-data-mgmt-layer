@@ -248,10 +248,10 @@ public class CoreService implements Core {
     /**
      * Envelops the given data into a frame for storing.
      *
-     * @param data
-     * @param recipients
-     * @param attachedCapabilities
-     * @return
+     * @param data {@link Data} to serialize into the payload
+     * @param recipients public keys to encrypt the capability with
+     * @param attachedCapabilities capabilities of other frames to add to be payload
+     * @return {@link ParsedFrame} containing the capability and {@link Frame}
      */
     private ParsedFrame assembleFrame(Data data, Set<PublicKey> recipients, Set<Capability> attachedCapabilities) {
         // generate nonce of configured length
@@ -325,11 +325,11 @@ public class CoreService implements Core {
      * Parses the given {@link Frame} identified through {@code identifier} by looking up the corresponding
      * {@link Capability} in the cache or decrypting it from the {@link Frame#getEncryptedCapability()}.
      *
-     * @param account
-     * @param identifier
-     * @param persistedFrame
-     * @return
-     * @throws NotAuthorizedException
+     * @param account {@link AuthenticatedAccount} to use to retrieve the capability for {@code identifier}
+     * @param identifier {@link DataIdentifier} corresponding to the given {@code persistedFrame}
+     * @param persistedFrame {@link Frame} retrieved from the blockchain
+     * @return {@link ParsedFrame} containing the capability and {@link Frame}
+     * @throws NotAuthorizedException if the given {@code account} is not authorized to access the provided {@code persistedFrame}
      */
     private ParsedFrame parseFrame(AuthenticatedAccount account, DataIdentifier identifier, Frame persistedFrame) {
         Capability capability = cache.getCapability(account, identifier).or(() -> decryptCapability(account, persistedFrame, identifier))
@@ -341,10 +341,10 @@ public class CoreService implements Core {
     /**
      * Attempts to decrypt a capability matching the provided identifier from a list of ciphertexts using the given account.
      *
-     * @param account
-     * @param frame
-     * @param identifier
-     * @return
+     * @param account {@link AuthenticatedAccount} to attempt to decrypt the {@code frame} for
+     * @param frame {@link Frame} to retrieve the capability from
+     * @param identifier {@link DataIdentifier} to check the H(CAP) = ID property
+     * @return {@link Optional} containing the {@link Capability} retrieved from {@code frame} or {@link Optional#empty()}
      */
     private Optional<Capability> decryptCapability(AuthenticatedAccount account, Frame frame, DataIdentifier identifier) {
         List<byte[]> encryptedCapability = frame.getEncryptedCapability();
