@@ -186,6 +186,53 @@ public class CoreService implements Core {
                 blockchain.stopFrameListener();
         }
     }
+
+    @Override
+    public Map.Entry<DataIdentifier, byte[]> marshalFrame(Data data, Account account, Set<Subject> subjects) throws AuthenticationException {
+        Assert.requireNonNull(data, "data");
+        AuthenticatedAccount caller = authenticate(account);
+
+        if(data.getAttachments() != null && !data.getAttachments().isEmpty())
+            throw new IllegalArgumentException("Manually created frames are not allowed to have attachments.");
+
+        // resolve subjects to public keys that will be able to read the data
+        Set<PublicKey> recipients = queryPublicKeys(subjects);
+
+        // addCapability owner as recipient
+        recipients.add(caller.getPublicKey());
+
+        ParsedFrame frame = assembleFrame(data, recipients, Collections.emptySet());
+        byte[] serializedFrame = new ProtocolBufferSerializer().serializeFrame(frame);
+
+        return new AbstractMap.SimpleImmutableEntry<>(frame.getIdentifier(), serializedFrame);
+    }
+
+    @Override
+    public Map.Entry<DataIdentifier, byte[]> marshalFrame(Data data, Account account) throws AuthenticationException {
+        return marshalFrame(data, account, null);
+    }
+
+    @Override
+    public Data unmarshalFrame(DataIdentifier identifier, byte[] frame, Account account) throws AuthenticationException {
+        Assert.requireNonNull(identifier, "id");
+        Assert.requireNonNull(frame, "frame");
+        AuthenticatedAccount caller = authenticate(account);
+
+        Frame deserializedFrame = deserializeFrame(frame);
+        if(deserializedFrame == null)
+            throw new IllegalArgumentException("The given frame is invalid");
+
+        Optional<Capability> capability = decryptCapability(caller, deserializedFrame, identifier);
+        if(capability.isEmpty())
+            throw new NotAuthorizedException("The given frame cannot be accessed.");
+
+        ParsedFrame parsedFrame = new ParsedFrame(deserializedFrame, capability.get());
+
+        Payload payload = parsePayload(caller, parsedFrame);
+        if(payload == null) return null;
+
+        return new Data(payload.getData(), null);
+    }
     //------------------------------------------------------------------------------------------------------------------
     //endregion
 
@@ -332,8 +379,11 @@ public class CoreService implements Core {
      * @throws NotAuthorizedException if the given {@code account} is not authorized to access the provided {@code persistedFrame}
      */
     private ParsedFrame parseFrame(AuthenticatedAccount account, DataIdentifier identifier, Frame persistedFrame) {
-        Capability capability = cache.getCapability(account, identifier).or(() -> decryptCapability(account, persistedFrame, identifier))
-                .orElseThrow(() -> new NotAuthorizedException(String.format("The data identified by '%s' could not be accessed.", identifier.toString())));
+        Capability capability = cache.getCapability(account, identifier).or(() -> {
+            Optional<Capability> decryptedCapability = decryptCapability(account, persistedFrame, identifier);
+            decryptedCapability.ifPresent(cap -> cache.addCapability(account, cap, false));
+            return decryptedCapability;
+        }).orElseThrow(() -> new NotAuthorizedException(String.format("The data identified by '%s' could not be accessed.", identifier.toString())));
 
         return new ParsedFrame(persistedFrame, capability);
     }
@@ -363,8 +413,6 @@ public class CoreService implements Core {
         // check the property H(CAP) = ID
         if (capability.isEmpty() || !capability.get().getIdentifier().equals(identifier))
             return Optional.empty();
-
-        cache.addCapability(account, capability.get(), false);
 
         return capability;
     }

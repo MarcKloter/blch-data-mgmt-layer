@@ -4,6 +4,7 @@ import bdml.core.domain.*;
 import bdml.core.domain.exceptions.AuthenticationException;
 import bdml.core.domain.exceptions.NotAuthorizedException;
 
+import java.util.Map;
 import java.util.Set;
 
 public interface Core {
@@ -29,7 +30,7 @@ public interface Core {
 	 * @throws AuthenticationException if the {@link Account#getIdentifier()} and {@link Account#getPassword()}
 	 * combination do not correspond to an existing account.
 	 * @throws NotAuthorizedException if any {@link Data#getAttachments()} of {@code data} cannot be accessed by {@code account}.
-	 * @throws IllegalArgumentException if any {@link Data#getAttachments()} of {@code data} does not exist
+	 * @throws IllegalArgumentException if any {@link Data#getAttachments()} of {@code data} does not exist.
 	 * @throws NullPointerException if {@code data} or {@code account} is {@code null}.
 	 */
 	DataIdentifier storeData(Data data, Account account, Set<Subject> subjects) throws AuthenticationException;
@@ -119,4 +120,44 @@ public interface Core {
 	 * @throws NullPointerException if {@code account} or {@code handle} is {@code null}.
 	 */
 	void unregisterDataListener(Account account, String handle) throws AuthenticationException;
+
+	/**
+	 * Marshals the given {@code data} into a serialized frame addressed to the {@code subjects}.
+	 * Frames marshaled through this method will not be cached and cannot be referenced in on-chain entries as attachments.
+	 * Attaching data through {@link Data#getAttachments()} is not allowed.
+ 	 * The {@link Account#getIdentifier()} of {@code account} is implicitly added to the {@code subjects}.
+	 * The data is being encrypted using the public keys related to the {@code subjects}.
+	 *
+	 * @param data {@link Data} to marshal, {@link Data#getAttachments()} must be {@code null} or empty
+	 * @param account {@link Account} to interact as
+	 * @param subjects set of {@link Subject} to authorize, can be {@code null}
+	 * @return Mapping of {@link DataIdentifier} to the serialized frame.
+	 * @throws AuthenticationException if the {@link Account#getIdentifier()} and {@link Account#getPassword()}
+	 * combination do not correspond to an existing account.
+	 * @throws IllegalArgumentException if any {@link Data#getAttachments()} are supplied.
+	 * @throws NullPointerException if {@code data} or {@code account} is {@code null}.
+	 */
+	Map.Entry<DataIdentifier, byte[]> marshalFrame(Data data, Account account, Set<Subject> subjects) throws AuthenticationException;
+
+	/**
+	 * {@code subjects} defaults to {@code null}.
+	 *
+	 * @see Core#marshalFrame(Data, Account, Set)
+	 */
+	Map.Entry<DataIdentifier, byte[]> marshalFrame(Data data, Account account) throws AuthenticationException;
+
+	/**
+	 * Unmarshals the given {@code frame} using the provided {@code account}.
+	 *
+	 * @param identifier {@link DataIdentifier} corresponding to the serialized {@code frame} to assert the ID = H(CAP) property
+	 * @param frame serialized frame to unmarshal
+	 * @param account {@link Account} to interact as
+	 * @return {@link Data} object unmarshaled from {@code frame}.
+	 * @throws AuthenticationException  if the {@link Account#getIdentifier()} and {@link Account#getPassword()}
+	 * combination do not correspond to an existing account.
+	 * @throws NotAuthorizedException if the {@code frame} cannot be accessed by {@code account}.
+	 * @throws IllegalArgumentException if the {@code frame} is invalid.
+	 * @throws NullPointerException if {@code id}, {@code frame} or {@code account} is {@code null}.
+	 */
+	Data unmarshalFrame(DataIdentifier identifier, byte[] frame, Account account) throws AuthenticationException;
 }
