@@ -27,8 +27,8 @@ class GetDataIT {
     private static final String PASSWORD_2 = "password2";;
     private static final String PASSWORD_3 = "password2";
 
-    private static final Data SIMPLE_DATA_1 = new Data("data string");
-    private static final Data SIMPLE_DATA_2 = new Data("data string");
+    private static final Data SIMPLE_DATA_1 = new Data("data string 1");
+    private static final Data SIMPLE_DATA_2 = new Data("data string 2");
 
     private Core core;
 
