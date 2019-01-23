@@ -111,14 +111,14 @@ public class CoreService implements Core {
     }
 
     @Override
-    public Set<DataIdentifier> listData(Account account) throws AuthenticationException {
+    public Set<DataIdentifier> listDirectlyAccessibleData(Account account) throws AuthenticationException {
         AuthenticatedAccount caller = authenticate(account);
         pollNewFrames(caller, false);
         return cache.getAllIdentifiers(caller, false);
     }
 
     @Override
-    public Set<DataIdentifier> listDataChanges(Account account) throws AuthenticationException {
+    public Set<DataIdentifier> listDirectlyAccessibleDataChanges(Account account) throws AuthenticationException {
         AuthenticatedAccount caller = authenticate(account);
         return pollNewFrames(caller, true);
     }

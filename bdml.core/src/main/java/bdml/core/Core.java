@@ -52,7 +52,7 @@ public interface Core {
 	 * combination do not correspond to an existing account.
 	 * @throws NullPointerException if {@code account} is {@code null}.
 	 */
-	Set<DataIdentifier> listData(Account account) throws AuthenticationException;
+	Set<DataIdentifier> listDirectlyAccessibleData(Account account) throws AuthenticationException;
 
 	/**
 	 * Lists data identifiers of data that can directly be accessed by the provided account since the last time this method was called.
@@ -65,7 +65,7 @@ public interface Core {
 	 * combination do not correspond to an existing account.
 	 * @throws NullPointerException if {@code account} is {@code null}.
 	 */
-	Set<DataIdentifier> listDataChanges(Account account) throws AuthenticationException;
+	Set<DataIdentifier> listDirectlyAccessibleDataChanges(Account account) throws AuthenticationException;
 
 	/**
 	 * Returns the {@link TreeNode} to the data identified by {@code id} which contains a hierarchical tree structure of

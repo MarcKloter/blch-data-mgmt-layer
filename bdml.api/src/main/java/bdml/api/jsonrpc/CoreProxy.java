@@ -44,7 +44,7 @@ public class CoreProxy {
     @JsonRpcMethod
     public Set<String> listData(@JsonRpcParam("account") AccountWrapper account) {
         try {
-            return core.listData(account.unwrap()).stream().map(DataIdentifier::toString).collect(Collectors.toSet());
+            return core.listDirectlyAccessibleData(account.unwrap()).stream().map(DataIdentifier::toString).collect(Collectors.toSet());
         } catch (AuthenticationException e) {
             throw new AuthenticationExceptionWrapper();
         }
@@ -53,7 +53,7 @@ public class CoreProxy {
     @JsonRpcMethod
     public Set<String> listDataChanges(@JsonRpcParam("account") AccountWrapper account) {
         try {
-            return core.listDataChanges(account.unwrap()).stream().map(DataIdentifier::toString).collect(Collectors.toSet());
+            return core.listDirectlyAccessibleDataChanges(account.unwrap()).stream().map(DataIdentifier::toString).collect(Collectors.toSet());
         } catch (AuthenticationException e) {
             throw new AuthenticationExceptionWrapper();
         }
