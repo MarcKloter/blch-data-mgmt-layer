@@ -192,8 +192,8 @@ public class CoreService implements Core {
         Assert.requireNonNull(data, "data");
         AuthenticatedAccount caller = authenticate(account);
 
-        if(data.getAttachments() != null && !data.getAttachments().isEmpty())
-            throw new IllegalArgumentException("Manually created frames are not allowed to have attachments.");
+        // resolve all data identifiers to capabilities to attach (only checks blockchain, off-chain attachments not allowed)
+        Set<Capability> attachedCapabilities = lookupCapabilities(caller, data.getAttachments());
 
         // resolve subjects to public keys that will be able to read the data
         Set<PublicKey> recipients = queryPublicKeys(subjects);
@@ -201,7 +201,7 @@ public class CoreService implements Core {
         // addCapability owner as recipient
         recipients.add(caller.getPublicKey());
 
-        ParsedFrame frame = assembleFrame(data, recipients, Collections.emptySet());
+        ParsedFrame frame = assembleFrame(data, recipients, attachedCapabilities);
         byte[] serializedFrame = new ProtocolBufferSerializer().serializeFrame(frame);
 
         return new AbstractMap.SimpleImmutableEntry<>(frame.getIdentifier(), serializedFrame);
@@ -231,7 +231,11 @@ public class CoreService implements Core {
         Payload payload = parsePayload(caller, parsedFrame);
         if(payload == null) return null;
 
-        return new Data(payload.getData(), null);
+        Set<DataIdentifier> attachments = payload.getAttachments().stream()
+                .map(Capability::getIdentifier)
+                .collect(Collectors.toSet());
+
+        return new Data(payload.getData(), attachments);
     }
     //------------------------------------------------------------------------------------------------------------------
     //endregion

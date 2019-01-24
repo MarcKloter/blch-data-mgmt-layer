@@ -123,18 +123,18 @@ public interface Core {
 
 	/**
 	 * Marshals the given {@code data} into a serialized frame addressed to the {@code subjects}.
-	 * Frames marshaled through this method will not be cached and cannot be referenced in on-chain entries as attachments.
-	 * Attaching data through {@link Data#getAttachments()} is not allowed.
+	 * Frames marshaled through this method will not be cached and cannot be referenced in any other frame as attachments.
  	 * The {@link Account#getIdentifier()} of {@code account} is implicitly added to the {@code subjects}.
 	 * The data is being encrypted using the public keys related to the {@code subjects}.
 	 *
-	 * @param data {@link Data} to marshal, {@link Data#getAttachments()} must be {@code null} or empty
+	 * @param data {@link Data} to marshal, {@link Data#getAttachments()} must be on the blockchain
 	 * @param account {@link Account} to interact as
 	 * @param subjects set of {@link Subject} to authorize, can be {@code null}
 	 * @return Mapping of {@link DataIdentifier} to the serialized frame.
 	 * @throws AuthenticationException if the {@link Account#getIdentifier()} and {@link Account#getPassword()}
 	 * combination do not correspond to an existing account.
-	 * @throws IllegalArgumentException if any {@link Data#getAttachments()} are supplied.
+	 * @throws NotAuthorizedException if any {@link Data#getAttachments()} of {@code data} cannot be accessed by {@code account}.
+	 * @throws IllegalArgumentException if any {@link Data#getAttachments()} of {@code data} does not exist on the connected blockchain.
 	 * @throws NullPointerException if {@code data} or {@code account} is {@code null}.
 	 */
 	Map.Entry<DataIdentifier, byte[]> marshalFrame(Data data, Account account, Set<Subject> subjects) throws AuthenticationException;

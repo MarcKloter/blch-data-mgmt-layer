@@ -164,7 +164,12 @@ public class CacheImpl implements Cache {
             stmt.setBytes(2, attachedTo.toByteArray());
             stmt.executeUpdate();
         } catch (SQLException e) {
-            throw new MisconfigurationException(e.getMessage());
+            switch (e.getErrorCode()) {
+                case 23506: // PARENT_MISSING
+                    return; // on-chain entry attached off-chain
+                default:
+                    throw new MisconfigurationException(e.getMessage());
+            }
         }
     }
 

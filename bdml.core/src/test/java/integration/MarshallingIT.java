@@ -36,6 +36,8 @@ public class MarshallingIT {
     private Subject subject1;
     private Subject subject2;
 
+    private DataIdentifier blockchainFrame;
+
     @BeforeAll
     void setup() throws AuthenticationException {
         this.core = CoreService.getInstance();
@@ -45,6 +47,8 @@ public class MarshallingIT {
 
         this.subject2 = core.createAccount(PASSWORD_2);
         this.account2 = new Account(subject2, PASSWORD_2);
+
+        this.blockchainFrame = core.storeData(DATA, account1);
     }
 
     @Test
@@ -65,11 +69,35 @@ public class MarshallingIT {
     }
 
     @Test
-    void Marshal_Attachment() {
+    void Marshal_On_Chain_Attachment() {
+        Data dataWithAttachment = new Data(DATA.getData(), Set.of(blockchainFrame));
+        Map.Entry<DataIdentifier, byte[]> marshalledFrame = assertDoesNotThrow(() -> core.marshalFrame(dataWithAttachment, account1));
+        assertNotNull(marshalledFrame.getKey());
+        assertNotNull(marshalledFrame.getValue());
+
+        Data unmarshalledFrame = assertDoesNotThrow(() -> core.unmarshalFrame(marshalledFrame.getKey(), marshalledFrame.getValue(), account1));
+        assertNotNull(unmarshalledFrame);
+        assertEquals(unmarshalledFrame.getData(), DATA.getData());
+        assertEquals(unmarshalledFrame.getAttachments().size(), dataWithAttachment.getAttachments().size());
+        assertTrue(unmarshalledFrame.getAttachments().contains(blockchainFrame));
+    }
+
+    @Test
+    void Marshal_Not_Authorized_Attachment() {
+        // account1 stored the frame on the blockchain, account2 is not authorized to attach it
+        Data dataWithAttachment = new Data(DATA.getData(), Set.of(blockchainFrame));
+        NotAuthorizedException exception = assertThrows(NotAuthorizedException.class, () -> core.marshalFrame(dataWithAttachment, account2));
+        System.out.println(String.format("Exception message: %s", exception.getMessage()));
+    }
+
+    @Test
+    void Marshal_Off_Chain_Attachment() {
+        // same as a non existent attachment (as it does not exist on the blockchain)
         Map.Entry<DataIdentifier, byte[]> marshalledFrame = assertDoesNotThrow(() -> core.marshalFrame(DATA, account1));
         assertNotNull(marshalledFrame.getKey());
         Data dataWithAttachment = new Data(DATA.getData(), Set.of(marshalledFrame.getKey()));
-        assertThrows(IllegalArgumentException.class, () -> core.marshalFrame(dataWithAttachment, account1));
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> core.marshalFrame(dataWithAttachment, account1));
+        System.out.println(String.format("Exception message: %s", exception.getMessage()));
     }
 
     @Test
