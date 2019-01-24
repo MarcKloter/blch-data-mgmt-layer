@@ -1,14 +1,11 @@
 package bdml.services;
 
-import bdml.services.api.types.Account;
+import bdml.services.helper.Account;
 import bdml.services.helper.FrameListener;
 
-import java.math.BigInteger;
 import java.util.*;
 
 public interface Blockchain {
-    // TODO: javadoc
-
     /**
      * Creates an entity (eg. pair of public and private key) to use within the connected blockchain.
      * An entity can be used by providing the id and secret used for creation.
@@ -56,7 +53,15 @@ public interface Blockchain {
      */
     LinkedHashSet<Map.Entry<byte[], byte[]>> getFrames(String fromBlock);
 
+    /**
+     * Registers the given {@link FrameListener} for notifications about any new frames received from the connected blockchain.
+     *
+     * @param frameListener object that implements {@link FrameListener} to notify about new frames
+     */
     void startFrameListener(FrameListener frameListener);
 
+    /**
+     * Unregisters any registered {@link FrameListener}.
+     */
     void stopFrameListener();
 }

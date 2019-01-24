@@ -67,6 +67,15 @@ public class KeyServerAdapter implements KeyServer {
 
     @Override
     public void registerKey(String identifier, PublicKey key) {
+        if(identifier == null)
+            throw new NullPointerException("The parameter 'identifier' cannot be null.");
+
+        if(key == null)
+            throw new NullPointerException("The parameter 'key' cannot be null.");
+
+        if(registeredKeys.containsKey(identifier))
+            throw new IllegalArgumentException(String.format("The identifier '%s' has already been registered before.", identifier));
+
         String publicKey = Base64.getEncoder().encodeToString(key.getEncoded());
         this.registeredKeys.put(identifier, new Subject(identifier, publicKey));
 

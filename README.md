@@ -2,9 +2,9 @@
 
 ## Getting Started
 ### Building a JAR
-The `mvn package` phase of the `blch-data-mgmt-layer` root project will build an executable fat JAR into `blch-data-mgmt-layer/target/`. Next to it, there will also be a copy of the signed Bouncy Castle Provider JAR that is required to reside next to the blch-data-mgmt-layer JAR.  
+The `mvn package` phase of the `blch-data-mgmt-layer` root project will build an executable fat JAR `bdml-data-mgmt-layer-{version}` and a nonexecutable fat JAR `bdml.core-{version}` into `blch-data-mgmt-layer/target/`. Next to them, there will also be a signed copy of the Bouncy Castle Provider that is required to reside next to the blch-data-mgmt-layer JAR on exectuion.  
 
-The JAR can be executed to [start the JSON-RPC and WebSocket Endpoint](#JSON-RPC-and-WebSocket-Endpoint) or added to a Java project as external JAR.
+The executable JAR can be used to [start the JSON-RPC and WebSocket Endpoint](#JSON-RPC-and-WebSocket-Endpoint). The other can be added to a Java project to [use the Core service](#Using-the-Core-service).
 
 ### Parity
 This proof of concept is built to interact with [Parity Ethereum](https://www.parity.io/ethereum/) and requires the `eth` and `personal` modules.
@@ -76,10 +76,10 @@ java -jar blch-data-mgmt-layer-1.0.0.jar --keystore keystore.jks --password <pas
 Development Note: While using self-signed certificates, remember to adjust SSL verification. 
 
 ### Running the JSON-RPC Endpoint within an IDE
-To run the JSON-RPC Endpoint in an IDE, the `bdml.core/Starter` class requires the parameters from above as program arguments (in this example the `.jks` file is located in the resources directory, the path is relative to the `blch-data-mgmt-layer` project directory):
+To run the JSON-RPC Endpoint in an IDE, the `bdml.api/Starter` class requires the parameters from above as program arguments (in this example the `.jks` file is located in the resources directory, the path is relative to the `blch-data-mgmt-layer` project directory):
 
 ```
--k bdml.core/src/main/resources/keystore.jks -p <password>
+-k bdml.api/src/main/resources/keystore.jks -p <password>
 ```
 
 ## Configuration
@@ -98,7 +98,7 @@ The following properties can be set:
 | `bdml.blockchain.parity.websocket.uri` | `ws://localhost:8546` | This is the URI of the parity WebSocket endpoint. |
 
 ## Using the Core service
-All available methods of the Core service are defined in the [bdml.services/Core interface](bdml.services/src/main/java/bdml/services/api/Core.java).
+All available methods of the Core service are defined in the [bdml.core/Core interface](bdml.core/src/main/java/bdml/core/Core.java).
 
 Getting the core instance:
 
@@ -108,7 +108,7 @@ Core core = CoreService.getInstance();
 
 Creating an account:
 ```java
-String accountID = core.createAccount(password);
+Subject accountID = core.createAccount(password);
 
 // account object required for further methods
 Account account = new Account(accountID, password);
@@ -116,7 +116,7 @@ Account account = new Account(accountID, password);
 
 Storing data:
 ```java
-String dataID = core.storeData("my data string", account);
+DataIdentifier dataID = core.storeData(new Data("my data string"), account);
 ```
 
 Querying the stored data:

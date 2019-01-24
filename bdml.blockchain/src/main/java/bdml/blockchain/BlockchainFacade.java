@@ -3,7 +3,7 @@ package bdml.blockchain;
 import bdml.blockchain.parity.ParityAdapter;
 import bdml.blockchain.persistence.AccountMap;
 import bdml.services.Blockchain;
-import bdml.services.api.types.Account;
+import bdml.services.helper.Account;
 import bdml.services.exceptions.MisconfigurationException;
 import bdml.services.exceptions.MissingConfigurationException;
 import bdml.services.helper.FrameListener;

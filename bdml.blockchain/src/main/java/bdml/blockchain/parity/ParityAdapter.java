@@ -19,6 +19,7 @@ import org.web3j.protocol.core.DefaultBlockParameterName;
 import org.web3j.protocol.core.DefaultBlockParameterNumber;
 import org.web3j.protocol.core.methods.request.EthFilter;
 import org.web3j.protocol.core.methods.response.EthBlockNumber;
+import org.web3j.protocol.core.methods.response.EthGetCode;
 import org.web3j.protocol.core.methods.response.EthLog;
 import org.web3j.protocol.core.methods.response.TransactionReceipt;
 import org.web3j.protocol.http.HttpService;
@@ -39,7 +40,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class ParityAdapter {
-    private final String HEX_PREFIX = "0x";
+    private static final String HEX_PREFIX = "0x";
     private final String EVENT_TOPIC = EventEncoder.encode(EventStorage.DATAEVENT_EVENT);
     private final List<String> CONTRACT_ADDRESS;
 
@@ -49,6 +50,27 @@ public class ParityAdapter {
     public ParityAdapter(String url, String contractAddress) {
         this.web3j = Admin.build(new HttpService(url));
         this.CONTRACT_ADDRESS = Collections.singletonList(contractAddress);
+        checkContract();
+    }
+
+    /**
+     * Checks whether every address in the CONTRACT_ADDRESS list is a deployed smart contract using eth_getCode.
+     * https://wiki.parity.io/JSONRPC-eth-module#eth_getcode
+     *
+     * @throws MisconfigurationException if one of the addresses does not contain contract code.
+     */
+    private void checkContract() {
+        for(String contractAddress : CONTRACT_ADDRESS) {
+            EthGetCode contract;
+            try {
+                contract = web3j.ethGetCode(contractAddress, DefaultBlockParameterName.LATEST).send();
+            } catch (IOException e) {
+                throw new MisconfigurationException(e.getMessage());
+            }
+
+            if(contract.getCode().equals("0x"))
+                throw new MisconfigurationException(String.format("The configured address: '%s' does not correspond to a smart contract.", contractAddress));
+        }
     }
 
     /**
@@ -149,35 +171,41 @@ public class ParityAdapter {
     }
 
     /**
+     * Starts a {@link Flowable} subscription on the connected blockchain using the eth_pubsub module.
+     * Notifies the given {@code frameListener} about new frames received from the blockchain matching the {@link ParityAdapter#EVENT_TOPIC}.
      *
-     * @param webSocketURI
-     * @param frameListener
-     * @throws ConnectException
+     * @param webSocketURI uri of the parity websocket endpooint
+     * @param frameListener object that implements {@link FrameListener} to notify about new frames received from the connected blockchain
+     * @throws ConnectException if there was a problem connecting to the {@code webSocketURI}.
      */
     public void startFrameListener(URI webSocketURI, FrameListener frameListener) throws ConnectException {
         if(this.eventSubscription != null)
             return;
 
-        WebSocketClient client = new WebSocketClient(webSocketURI);
-        WebSocketService service = new WebSocketService(client, false);
+        WebSocketService service = new WebSocketService(new WebSocketClient(webSocketURI), false);
         service.connect();
-        Web3j web3j = Web3j.build(service);
+
+        // topics to filter for
         List<String> topics = Collections.singletonList(EVENT_TOPIC);
-        Flowable<LogNotification> notifications = web3j.logsNotifications(CONTRACT_ADDRESS, topics);
+
+        Flowable<LogNotification> notifications = Web3j.build(service).logsNotifications(CONTRACT_ADDRESS, topics);
         this.eventSubscription = notifications.subscribe(logNotification -> {
-            // TODO: refactor
             Log log = logNotification.getParams().getResult();
-            String identifier = log.getTopics().get(1);
-            identifier = identifier.replaceFirst(HEX_PREFIX, "");
-            byte[] idBytes = Hex.decodeHex(identifier);
+
+            // retrieve the indexed data identifier, which is the second topic [event topic, identifier]
+            String identifier = log.getTopics().get(1).replaceFirst(HEX_PREFIX, "");
+
+            // retreive the non indexed values (input parameters)
             List<Type> nonIndexedValues = FunctionReturnDecoder.decode(log.getData(), EventStorage.DATAEVENT_EVENT.getNonIndexedParameters());
-            byte[] frame = (byte[]) nonIndexedValues.get(0).getValue();
-            frameListener.update(idBytes, frame);
+
+            // the only input parameter that is not indexed is the serialized frame
+            byte[] serializedFrame = (byte[]) nonIndexedValues.get(0).getValue();
+            frameListener.update(Hex.decodeHex(identifier), serializedFrame);
         });
     }
 
     /**
-     *
+     * Disposes any open {@link Flowable} subscription.
      */
     public void stopFrameListener() {
         if(this.eventSubscription != null && !this.eventSubscription.isDisposed()) {
@@ -236,7 +264,7 @@ public class ParityAdapter {
         if(logResult instanceof EthLog.LogObject) {
             return (EthLog.LogObject) logResult.get();
         } else {
-            throw new RuntimeException("Unexpected result type: " + logResult.get().getClass() + " required LogObject");
+            throw new MisconfigurationException("Unexpected result type: " + logResult.get().getClass() + " required LogObject");
         }
     }
 

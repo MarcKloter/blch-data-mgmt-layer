@@ -6,7 +6,7 @@
 
 	<groupId>bdml</groupId>
 	<artifactId>blch-data-mgmt-layer</artifactId>
-	<version>1.0.0</version>
+	<version>0.2.0</version>
 	<packaging>pom</packaging>
 
 	<properties>
@@ -20,9 +20,8 @@
 		<module>bdml.cryptostore</module>
 		<module>bdml.keyserver</module>
 		<module>bdml.blockchain</module>
-		<module>bdml.cache</module>
 		<module>bdml.services</module>
-		<module>bdml.format</module>
+		<module>bdml.api</module>
 	</modules>
 
 	<dependencyManagement>

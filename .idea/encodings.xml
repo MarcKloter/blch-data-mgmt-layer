@@ -2,8 +2,8 @@
 <project version="4">
   <component name="Encoding" addBOMForNewFiles="with NO BOM">
     <file url="file://$PROJECT_DIR$" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/bdml.api" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/bdml.blockchain" charset="UTF-8" />
-    <file url="file://$PROJECT_DIR$/bdml.cache" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/bdml.core" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/bdml.cryptostore" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/bdml.format" charset="UTF-8" />

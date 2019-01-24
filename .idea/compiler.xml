@@ -6,18 +6,17 @@
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
+        <module name="bdml.api" />
         <module name="bdml.blockchain" />
-        <module name="bdml.cache" />
         <module name="bdml.core" />
         <module name="bdml.cryptostore" />
-        <module name="bdml.format" />
         <module name="bdml.keyserver" />
         <module name="bdml.services" />
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
+      <module name="bdml.api" target="11" />
       <module name="bdml.blockchain" target="11" />
-      <module name="bdml.cache" target="11" />
       <module name="bdml.core" target="11" />
       <module name="bdml.cryptostore" target="11" />
       <module name="bdml.format" target="11" />

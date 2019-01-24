@@ -1,0 +1,70 @@
+package bdml.core.persistence;
+
+
+import bdml.core.domain.Capability;
+import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.io.Input;
+import com.esotericsoftware.kryo.io.Output;
+
+import java.io.ByteArrayOutputStream;
+
+public class KryoSerializer implements Serializer {
+
+    private static final Kryo kryo;
+
+    static {
+        kryo = new Kryo();
+        kryo.setRegistrationRequired(false);
+        kryo.register(Capability.class, new com.esotericsoftware.kryo.Serializer<Capability>(){
+            @Override
+            public void write(Kryo kryo, Output output, Capability o) {
+                output.write(o.toByteArray());
+            }
+
+            @Override
+            public Capability read(Kryo kryo, Input input, Class aClass) {
+                return new Capability(input.readBytes(Capability.BYTES));
+            }
+        },0);
+        kryo.register(Frame.class,1);
+    }
+
+    @Override
+    public byte[] serializePayload(Payload payload) {
+        ByteArrayOutputStream b = new ByteArrayOutputStream();
+        Output output = new Output(b);
+        kryo.writeClassAndObject(output, payload);
+        return output.toBytes();
+    }
+
+    @Override
+    public Payload deserializePayload(byte[] payload) throws DeserializationException {
+        try {
+            Input input = new Input(payload);
+            return (Payload)kryo.readClassAndObject(input);
+        } catch (Exception e){
+            throw new DeserializationException(e.getMessage());
+        }
+
+    }
+
+    @Override
+    public byte[] serializeFrame(Frame frame) {
+        //Make sure that we do not serialize a subclass
+        Frame realFrame = new Frame(frame.getVersion(),frame.getEncryptedCapability(),frame.getEncryptedPayload());
+        ByteArrayOutputStream b = new ByteArrayOutputStream();
+        Output output = new Output(b);
+        kryo.writeObject(output, realFrame);
+        return output.toBytes();
+    }
+
+    @Override
+    public Frame deserializeFrame(byte[] frame) throws DeserializationException {
+        try {
+            Input input = new Input(frame);
+            return kryo.readObject(input, Frame.class);
+        } catch (Exception e){
+            throw new DeserializationException(e.getMessage());
+        }
+    }
+}

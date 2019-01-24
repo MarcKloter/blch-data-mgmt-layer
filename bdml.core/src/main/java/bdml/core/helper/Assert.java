@@ -1,7 +1,5 @@
 package bdml.core.helper;
 
-import org.bouncycastle.util.encoders.Hex;
-
 import java.util.Collection;
 import java.util.Objects;
 
@@ -42,16 +40,5 @@ public class Assert {
         requireNonNull(string, param);
         if(string.isEmpty())
             throw new IllegalArgumentException(String.format("No '%s' provided.", param));
-    }
-
-    /**
-     * Checks whether the given identifier is 32 bytes.
-     *
-     * @param identifier the data identifier to check
-     * @throws IllegalArgumentException if {@code identifier} is not 32 bytes.
-     */
-    public static void require32Bytes(byte[] identifier) {
-        if (identifier.length != 32)
-            throw new IllegalArgumentException(String.format("The given data identifier is %d bytes, expected 32 bytes.", identifier.length));
     }
 }

@@ -8,7 +8,7 @@
 	<parent>
 		<groupId>bdml</groupId>
 		<artifactId>blch-data-mgmt-layer</artifactId>
-		<version>1.0.0</version>
+		<version>0.2.0</version>
 	</parent>
 	
 	<artifactId>bdml.cryptostore</artifactId>
@@ -16,6 +16,7 @@
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<project.package.outputDirectory>../target</project.package.outputDirectory>
 		<!-- SonarQube: ignore dummy files -->
 		<sonar.exclusions>**/*Dummy*</sonar.exclusions>
 	</properties>
@@ -26,6 +27,22 @@
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
 			</plugin>
+			<!-- Copy the signed BC provider JAR to the output folder -->
+			<plugin>
+				<artifactId>maven-dependency-plugin</artifactId>
+				<executions>
+					<execution>
+						<phase>prepare-package</phase>
+						<goals>
+							<goal>copy-dependencies</goal>
+						</goals>
+						<configuration>
+							<includeArtifactIds>bcprov-jdk15on</includeArtifactIds>
+							<outputDirectory>${project.package.outputDirectory}</outputDirectory>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
 		</plugins>
 	</build>
 	
@@ -33,7 +50,12 @@
 		<dependency>
 			<groupId>bdml</groupId>
 			<artifactId>bdml.services</artifactId>
-			<version>1.0.0</version>
+			<version>0.2.0</version>
+		</dependency>
+		<dependency>
+			<groupId>org.junit.jupiter</groupId>
+			<artifactId>junit-jupiter-api</artifactId>
+			<scope>test</scope>
 		</dependency>
 		<!-- https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-databind -->
 		<dependency>
