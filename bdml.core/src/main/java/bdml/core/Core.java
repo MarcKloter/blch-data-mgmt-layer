@@ -138,14 +138,14 @@ public interface Core {
 	 * @throws IllegalArgumentException if any {@link Data#getAttachments()} are supplied.
 	 * @throws NullPointerException if {@code data} or {@code account} is {@code null}.
 	 */
-	//Map.Entry<DataIdentifier, byte[]> marshalFrame(Data data, Account account, Set<Subject> subjects) throws AuthenticationException;
+	Map.Entry<DataIdentifier, byte[]> marshalFrame(Data data, Account account, Set<Subject> subjects) throws AuthenticationException;
 
 	/**
 	 * {@code subjects} defaults to {@code null}.
 	 *
 	 * @see Core#marshalFrame(Data, Account, Set)
 	 */
-	//Map.Entry<DataIdentifier, byte[]> marshalFrame(Data data, Account account) throws AuthenticationException;
+	Map.Entry<DataIdentifier, byte[]> marshalFrame(Data data, Account account) throws AuthenticationException;
 
 	/**
 	 * Unmarshals the given {@code frame} using the provided {@code account}.
@@ -160,6 +160,6 @@ public interface Core {
 	 * @throws IllegalArgumentException if the {@code frame} is invalid.
 	 * @throws NullPointerException if {@code id}, {@code frame} or {@code account} is {@code null}.
 	 */
-	//Data unmarshalFrame(DataIdentifier identifier, byte[] frame, Account account) throws AuthenticationException;
+	Data unmarshalFrame(DataIdentifier identifier, byte[] frame, Account account) throws AuthenticationException;
 
 }

@@ -184,14 +184,13 @@ public class CoreService implements Core {
         }
     }
 
-    /*
     @Override
     public Map.Entry<DataIdentifier, byte[]> marshalFrame(Data data, Account account, Set<Subject> subjects) throws AuthenticationException {
         Assert.requireNonNull(data, "data");
         AuthenticatedAccount caller = authenticate(account);
 
-        if(data.getAttachments() != null && !data.getAttachments().isEmpty())
-            throw new IllegalArgumentException("Manually created frames are not allowed to have attachments.");
+        // resolve all data identifiers to capabilities to attach (only checks blockchain, off-chain attachments not allowed)
+        Payload payload =  data.resolveAttachments(id -> lookupCapability(caller, id));
 
         // resolve subjects to public keys that will be able to read the data
         Set<PublicKey> recipients = queryPublicKeys(subjects);
@@ -199,7 +198,7 @@ public class CoreService implements Core {
         // addCapability owner as recipient
         recipients.add(caller.getPublicKey());
 
-        ParsedFrame frame = processFrame(data, recipients, Collections.emptySet());
+        ParsedFrame frame = assembleFrame(payload, recipients);
         byte[] serializedFrame = serializer.serializeFrame(frame);
 
         return new AbstractMap.SimpleImmutableEntry<>(frame.getIdentifier(), serializedFrame);
@@ -225,13 +224,11 @@ public class CoreService implements Core {
             throw new NotAuthorizedException("The given frame cannot be accessed.");
 
         ParsedFrame parsedFrame = new ParsedFrame(deserializedFrame, capability.get());
-
-        Payload payload = processPayload(caller, parsedFrame);
+        Payload payload = parsePayload(parsedFrame);
         if(payload == null) return null;
 
-        return new Data(payload.getData(), null);
+        return payload.processCapabilities(Capability::getIdentifier);
     }
-    */
     //------------------------------------------------------------------------------------------------------------------
     //endregion
 
@@ -349,7 +346,6 @@ public class CoreService implements Core {
         try {
             frame = serializer.deserializeFrame(serializedFrame);
         } catch (DeserializationException e) {
-            e.printStackTrace();
             LOGGER.error(String.format("Attempted to deserialize a malformed frame: %s", e.getMessage()));
             return null;
         }
@@ -417,11 +413,9 @@ public class CoreService implements Core {
             byte[] decPayload = Arrays.copyOfRange(decSaltedPayload, 0, decSaltedPayload.length - NONCE_BYTES);
             return serializer.deserializePayload(decPayload);
         } catch (IllegalArgumentException e) {
-            e.printStackTrace();
             LOGGER.error(String.format("Failed to decrypt the payload of frame '%s': %s", frame.getIdentifier().toString(), e.getMessage()));
             return null;
         } catch (DeserializationException e) {
-            e.printStackTrace();
             LOGGER.error(String.format("Attempted to deserialize the payload of frame '%s': %s", frame.getIdentifier().toString(), e.getMessage()));
             return null;
         }
