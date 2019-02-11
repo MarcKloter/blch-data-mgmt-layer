@@ -2,9 +2,11 @@ package bdml.core.persistence;
 
 
 import bdml.core.domain.Capability;
+import bdml.core.domain.DataIdentifier;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
+import com.esotericsoftware.kryo.serializers.DefaultSerializers;
 
 import java.io.ByteArrayOutputStream;
 
@@ -26,7 +28,19 @@ public class KryoSerializer implements Serializer {
                 return new Capability(input.readBytes(Capability.BYTES));
             }
         },0);
-        kryo.register(Frame.class,1);
+        kryo.register(DataIdentifier.class, new com.esotericsoftware.kryo.Serializer<DataIdentifier>(){
+            @Override
+            public void write(Kryo kryo, Output output, DataIdentifier o) {
+                output.write(o.toByteArray());
+            }
+
+            @Override
+            public DataIdentifier read(Kryo kryo, Input input, Class aClass) {
+                return new DataIdentifier(input.readBytes(Capability.BYTES));
+            }
+        },1);
+        kryo.register(String.class,new DefaultSerializers.StringSerializer(),2);
+        kryo.register(Frame.class,3);
     }
 
     @Override

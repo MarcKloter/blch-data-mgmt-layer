@@ -49,6 +49,10 @@ public class Subject {
         return new Subject(subject);
     }
 
+    public byte[] toBytes() {
+        return subject;
+    }
+
     @Override
     public String toString() {
         return Hex.encodeHexString(subject);

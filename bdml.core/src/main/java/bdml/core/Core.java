@@ -4,6 +4,7 @@ import bdml.core.domain.*;
 import bdml.core.domain.exceptions.AuthenticationException;
 import bdml.core.domain.exceptions.NotAuthorizedException;
 
+import java.security.PublicKey;
 import java.util.Map;
 import java.util.Set;
 
@@ -17,6 +18,9 @@ public interface Core {
 	 * @throws NullPointerException if {@code password} is {@code null}.
 	 */
 	Subject createAccount(String password);
+
+	String exportSubject(Subject subject);
+	Subject importSubject(String pk);
 
 	/**
 	 * Persists data in the connected blockchain.
@@ -161,5 +165,12 @@ public interface Core {
 	 * @throws NullPointerException if {@code id}, {@code frame} or {@code account} is {@code null}.
 	 */
 	Data unmarshalFrame(DataIdentifier identifier, byte[] frame, Account account) throws AuthenticationException;
+
+
+	//Alternative to marshall unmarshall but hands out cap (Needed for now)
+	Map.Entry<Capability, byte[]> selfEncrypt(byte[] data);
+	byte[] selfDecrypt(Capability key, byte[] data);
+	//FOR DEMO
+	byte[] raw(DataIdentifier identifier);
 
 }

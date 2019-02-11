@@ -3,6 +3,8 @@ package bdml.core.domain;
 import bdml.core.helper.Crypto;
 import bdml.core.domain.exceptions.CapabilityFormatException;
 
+import java.util.Arrays;
+
 public class Capability {
     public static final int BYTES = 32;
 
@@ -33,5 +35,18 @@ public class Capability {
 
     public byte[] toByteArray() {
         return capability;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Capability that = (Capability) o;
+        return Arrays.equals(capability, that.capability);
+    }
+
+    @Override
+    public int hashCode() {
+        return Arrays.hashCode(capability);
     }
 }

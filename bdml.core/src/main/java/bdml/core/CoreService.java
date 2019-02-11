@@ -1,7 +1,9 @@
 package bdml.core;
 
+import java.security.KeyFactory;
 import java.security.PublicKey;
 import java.security.SecureRandom;
+import java.security.spec.X509EncodedKeySpec;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -17,6 +19,7 @@ import bdml.core.helper.*;
 import bdml.core.persistence.*;
 import bdml.core.domain.*;
 import bdml.cryptostore.CryptoStoreAdapter;
+import bdml.keyserver.KeyDecoder;
 import bdml.keyserver.KeyServerAdapter;
 import bdml.services.Blockchain;
 import bdml.core.cache.Cache;
@@ -88,6 +91,20 @@ public class CoreService implements Core {
     }
 
     @Override
+    public String exportSubject(Subject subject) {
+        PublicKey key = keyServer.queryKey(subject.toString());
+        return Base64.getEncoder().encodeToString(key.getEncoded());
+    }
+
+    @Override
+    public Subject importSubject(String pk) {
+        PublicKey key = KeyDecoder.decodePublicKey(pk);
+        Subject subject = Subject.deriveFrom(key);
+        keyServer.registerKey(subject.toString(),key);
+        return subject;
+    }
+
+    @Override
     public DataIdentifier storeData(Data data, Account account, Set<Subject> subjects) throws AuthenticationException {
         Assert.requireNonNull(data, "data");
         AuthenticatedAccount caller = authenticate(account);
@@ -145,6 +162,14 @@ public class CoreService implements Core {
         Payload payload = parsePayload(frame);
         if(payload == null) return null;
         return processPayload(caller, identifier, payload);
+    }
+
+    //FOR DEMO
+    @Override
+    public byte[] raw(DataIdentifier identifier) {
+        Assert.requireNonNull(identifier, "id");
+        Frame frame = getFrame(identifier);
+        return frame.getEncryptedPayload();
     }
 
     @Override
@@ -229,8 +254,38 @@ public class CoreService implements Core {
 
         return payload.processCapabilities(Capability::getIdentifier);
     }
+
+    @Override
+    public Map.Entry<Capability, byte[]> selfEncrypt(byte[] data) {
+
+        byte[] nonce = new byte[NONCE_BYTES];
+        new SecureRandom().nextBytes(nonce);
+        byte[] saltedPayload = Crypto.concatenate(data,nonce);
+
+
+        // CAP = H(PAYLOAD)
+        Capability capability = Capability.of(saltedPayload);
+        byte[] encryptedPayload = Crypto.symmetricallyEncrypt(capability, saltedPayload);
+
+        return new AbstractMap.SimpleImmutableEntry<>(capability, encryptedPayload);
+    }
+
+    @Override
+    public byte[] selfDecrypt(Capability key, byte[] data) {
+        byte[] decSaltedPayload = Crypto.symmetricallyDecrypt(key, data);
+        if(!Capability.of(decSaltedPayload).equals(key)) {
+            //We need a appropriate exception
+            return null;
+        } else {
+            return Arrays.copyOfRange(decSaltedPayload, 0, decSaltedPayload.length - NONCE_BYTES);
+        }
+    }
+
+
     //------------------------------------------------------------------------------------------------------------------
     //endregion
+
+
 
     /**
      * Authenticates whether the given account exists.

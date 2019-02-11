@@ -2,7 +2,9 @@ package bdml.cryptostore;
 
 import java.security.*;
 import java.security.spec.ECGenParameterSpec;
+import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.X509EncodedKeySpec;
 import java.util.Arrays;
 import java.util.Properties;
 
@@ -13,6 +15,7 @@ import bdml.services.exceptions.MissingConfigurationException;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.jce.spec.IESParameterSpec;
 
+import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 
 public class CryptoStoreAdapter implements CryptographicStore {
@@ -116,12 +119,7 @@ public class CryptoStoreAdapter implements CryptographicStore {
 
             return iesCipher.doFinal(ciphertext);
         } catch (GeneralSecurityException e) {
-            switch (e.getCause().getClass().getSimpleName()) {
-                case "InvalidCipherTextException":
-                    return null;
-                default:
-                    throw new MisconfigurationException(e.getMessage());
-            }
+            return null;
         }
     }
 }
