@@ -102,6 +102,7 @@ public class CoreService implements Core {
 
         blockchain.storeFrame(caller, frame.getIdentifier().toByteArray(), serializedFrame);
         cache.addCapability(caller, frame.getCapability(), false);
+        cache.release(caller);
         return frame.getIdentifier();
     }
 
@@ -114,13 +115,19 @@ public class CoreService implements Core {
     public Set<DataIdentifier> listDirectlyAccessibleData(Account account) throws AuthenticationException {
         AuthenticatedAccount caller = authenticate(account);
         pollNewFrames(caller, false);
-        return cache.getAllIdentifiers(caller, false);
+        Set<DataIdentifier> identifiers = cache.getAllIdentifiers(caller, false);
+
+        cache.release(caller);
+        return identifiers;
     }
 
     @Override
     public Set<DataIdentifier> listDirectlyAccessibleDataChanges(Account account) throws AuthenticationException {
         AuthenticatedAccount caller = authenticate(account);
-        return pollNewFrames(caller, true);
+        Set<DataIdentifier> identifiers = pollNewFrames(caller, true);
+
+        cache.release(caller);
+        return identifiers;
     }
 
     @Override
@@ -131,7 +138,10 @@ public class CoreService implements Core {
         // check whether the entry point exists and the caller has access
         ParsedFrame frame = parseFrame(caller, identifier, getFrame(identifier));
 
-        return getAllAttachments(caller, frame.getCapability()).orElse(null);
+        TreeNode<DataIdentifier> node = getAllAttachments(caller, frame.getCapability()).orElse(null);
+
+        cache.release(caller);
+        return node;
     }
 
     @Override
@@ -143,6 +153,7 @@ public class CoreService implements Core {
 
         Payload payload = parsePayload(caller, frame);
         if(payload == null) return null;
+        cache.release(caller);
 
         Set<DataIdentifier> attachments = payload.getAttachments().stream()
                 .map(Capability::getIdentifier)
@@ -194,6 +205,7 @@ public class CoreService implements Core {
 
         // resolve all data identifiers to capabilities to attach (only checks blockchain, off-chain attachments not allowed)
         Set<Capability> attachedCapabilities = lookupCapabilities(caller, data.getAttachments());
+        cache.release(caller);
 
         // resolve subjects to public keys that will be able to read the data
         Set<PublicKey> recipients = queryPublicKeys(subjects);
@@ -230,6 +242,7 @@ public class CoreService implements Core {
 
         Payload payload = parsePayload(caller, parsedFrame);
         if(payload == null) return null;
+        cache.release(caller);
 
         Set<DataIdentifier> attachments = payload.getAttachments().stream()
                 .map(Capability::getIdentifier)

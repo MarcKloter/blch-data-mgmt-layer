@@ -11,10 +11,7 @@ import org.h2.tools.RunScript;
 
 import java.io.InputStreamReader;
 import java.sql.*;
-import java.util.HashSet;
-import java.util.Optional;
-import java.util.Properties;
-import java.util.Set;
+import java.util.*;
 
 public class CacheImpl implements Cache {
     // mandatory configuration properties
@@ -26,6 +23,8 @@ public class CacheImpl implements Cache {
     // fallback value if a cache file was deleted or corrupt, should be set to the block when the application was deployed
     private final String fallbackBlock;
     private final String outputDirectory;
+
+    private final HashMap<Account, Connection> connections = new HashMap<>();
 
     public CacheImpl(Properties configuration) {
         // load configuration
@@ -43,7 +42,8 @@ public class CacheImpl implements Cache {
     @Override
     public void initialize(Account account, String pointer) {
         try {
-            createCache(account, pointer);
+            Connection conn = createCache(account, pointer);
+            conn.close();
         } catch (SQLException e) {
             throw new IllegalStateException("Account has been initialized before.");
         }
@@ -51,7 +51,8 @@ public class CacheImpl implements Cache {
 
     @Override
     public void addCapability(Account account, Capability capability, boolean isAttachment) {
-        try (Connection conn = connectOrCreate(account)) {
+        Connection conn = getConnection(account);
+        try {
             DataIdentifier identifier = capability.getIdentifier();
             Optional<Data> data = getData(conn, identifier);
             if (data.isEmpty()) {
@@ -74,7 +75,8 @@ public class CacheImpl implements Cache {
 
     @Override
     public Optional<Capability> getCapability(Account account, DataIdentifier identifier) {
-        try (Connection conn = connectOrCreate(account)) {
+        Connection conn = getConnection(account);
+        try {
             Optional<Data> data = getData(conn, identifier);
             return data.map(Data::getCapability).map(Capability::new);
         } catch (SQLException e) {
@@ -84,7 +86,8 @@ public class CacheImpl implements Cache {
 
     @Override
     public void setRecursivelyParsed(Account account, DataIdentifier identifier) {
-        try (Connection conn = connectOrCreate(account)) {
+        Connection conn = getConnection(account);
+        try {
             Optional<Data> data = getData(conn, identifier);
             if (data.isEmpty())
                 throw new IllegalArgumentException(String.format("There was no data found identified by '%s'", identifier.toString()));
@@ -98,7 +101,8 @@ public class CacheImpl implements Cache {
 
     @Override
     public boolean wasRecursivelyParsed(Account account, DataIdentifier identifier) {
-        try (Connection conn = connectOrCreate(account)) {
+        Connection conn = getConnection(account);
+        try {
             Optional<Data> data = getData(conn, identifier);
             return data.map(Data::wasRecursivelyParsed).orElse(false);
         } catch (SQLException e) {
@@ -109,7 +113,8 @@ public class CacheImpl implements Cache {
     @Override
     public Set<DataIdentifier> getAllIdentifiers(Account account, boolean includeAttachments) {
         String sql = "SELECT identifier FROM DATA" + (includeAttachments ? " WHERE attachment = FALSE" : "");
-        try (Connection conn = connectOrCreate(account); ResultSet rs = conn.createStatement().executeQuery(sql)) {
+        Connection conn = getConnection(account);
+        try (ResultSet rs = conn.createStatement().executeQuery(sql)) {
             Set<DataIdentifier> result = new HashSet<>();
             while (rs.next())
                 result.add(new DataIdentifier(rs.getBytes("identifier")));
@@ -122,7 +127,8 @@ public class CacheImpl implements Cache {
 
     @Override
     public String getPointer(Account account) {
-        try (Connection conn = connectOrCreate(account)) {
+        Connection conn = getConnection(account);
+        try {
             return getVariable(conn, "pointer");
         } catch (SQLException e) {
             throw new MisconfigurationException(e.getMessage());
@@ -131,7 +137,8 @@ public class CacheImpl implements Cache {
 
     @Override
     public void setPointer(Account account, String pointer) {
-        try (Connection conn = connectOrCreate(account)) {
+        Connection conn = getConnection(account);
+        try {
             setVariable(conn, "pointer", pointer);
         } catch (SQLException e) {
             throw new MisconfigurationException(e.getMessage());
@@ -140,7 +147,8 @@ public class CacheImpl implements Cache {
 
     @Override
     public String getPollPointer(Account account) {
-        try (Connection conn = connectOrCreate(account)) {
+        Connection conn = getConnection(account);
+        try {
             return getVariable(conn, "poll-pointer");
         } catch (SQLException e) {
             throw new MisconfigurationException(e.getMessage());
@@ -149,7 +157,8 @@ public class CacheImpl implements Cache {
 
     @Override
     public void setPollPointer(Account account, String pointer) {
-        try (Connection conn = connectOrCreate(account)) {
+        Connection conn = getConnection(account);
+        try {
             setVariable(conn, "poll-pointer", pointer);
         } catch (SQLException e) {
             throw new MisconfigurationException(e.getMessage());
@@ -159,7 +168,8 @@ public class CacheImpl implements Cache {
     @Override
     public void addAttachment(Account account, DataIdentifier attachment, DataIdentifier attachedTo) {
         String sql = "MERGE INTO ATTACHMENTS KEY(identifier, attached_to) VALUES(?, ?)";
-        try (Connection conn = connectOrCreate(account); PreparedStatement stmt = conn.prepareStatement(sql)) {
+        Connection conn = getConnection(account);
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setBytes(1, attachment.toByteArray());
             stmt.setBytes(2, attachedTo.toByteArray());
             stmt.executeUpdate();
@@ -167,6 +177,9 @@ public class CacheImpl implements Cache {
             switch (e.getErrorCode()) {
                 case 23506: // PARENT_MISSING
                     return; // on-chain entry attached off-chain
+                case 22001: // VALUE_TOO_LONG
+                case 23502: // NULL_NOT_ALLOWED
+                    throw new IllegalArgumentException(e.getMessage());
                 default:
                     throw new MisconfigurationException(e.getMessage());
             }
@@ -175,10 +188,23 @@ public class CacheImpl implements Cache {
 
     @Override
     public TreeNode<DataIdentifier> getAllAttachments(Account account, DataIdentifier identifier) {
-        try (Connection conn = connectOrCreate(account)) {
+        Connection conn = getConnection(account);
+        try {
             return getAttachments(conn, identifier);
         } catch (SQLException e) {
             throw new MisconfigurationException(e.getMessage());
+        }
+    }
+
+    @Override
+    public void release(Account account) {
+        if(this.connections.containsKey(account)) {
+            try {
+                this.connections.get(account).close();
+            } catch (SQLException e) {
+                throw new MisconfigurationException(e.getMessage());
+            }
+            this.connections.remove(account);
         }
     }
 
@@ -255,18 +281,25 @@ public class CacheImpl implements Cache {
         }
     }
 
-    private Connection connectOrCreate(Account account) {
+    private Connection getConnection(Account account) {
+        // check whether the account has an open connection
+        if(this.connections.containsKey(account.getIdentifier()))
+            return connections.get(account.getIdentifier());
+
+        Connection conn;
         try {
             // only allow to open existing databases
-            return connect(account, ";IFEXISTS=TRUE");
+            conn = connect(account, ";IFEXISTS=TRUE");
         } catch (SQLException e1) {
             try {
                 // create an empty cache with a pointer to null
-                return createCache(account, fallbackBlock);
+                conn = createCache(account, fallbackBlock);
             } catch (SQLException e2) {
                 throw new MisconfigurationException(e2.getMessage());
             }
         }
+        connections.put(account, conn);
+        return conn;
     }
 
     private Connection connect(Account account, String params) throws SQLException {

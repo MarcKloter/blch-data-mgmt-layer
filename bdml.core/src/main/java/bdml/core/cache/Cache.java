@@ -122,4 +122,11 @@ public interface Cache {
      * @return {@link TreeNode} of the given {@code identifier}.
      */
     TreeNode<DataIdentifier> getAllAttachments(Account account, DataIdentifier identifier);
+
+    /**
+     * Releases the connection tied to the given {@code account}.
+     *
+     * @param account {@link Account} to interact as
+     */
+    void release(Account account);
 }
