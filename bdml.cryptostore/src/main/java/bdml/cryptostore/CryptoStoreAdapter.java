@@ -66,7 +66,7 @@ public class CryptoStoreAdapter implements CryptographicStore {
 
     @Override
     public boolean checkKeyPair(PublicKey key, String secret) {
-        return keyPairs.get(key, secret) != null;
+        return keyPairs.get(key, secret).length != 0;
     }
 
     @Override
@@ -96,7 +96,7 @@ public class CryptoStoreAdapter implements CryptographicStore {
 
         // getCapability private key persisted for the given public key and secret combination
         byte[] decodedKey = keyPairs.get(publicKey, secret);
-        if(decodedKey == null) return null;
+        if(decodedKey.length == 0) return null;
 
         // split ciphertext into ciphertext and nonce
         int index = ciphertext.length - 16;

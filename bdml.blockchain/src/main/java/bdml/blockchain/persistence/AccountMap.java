@@ -38,7 +38,7 @@ public class AccountMap {
             }
         } else {
             // create path if it doesn't exist
-            Path path = Paths.get(outputDirectory);
+            Path path = Paths.get(filepath);
             if(Files.notExists(path)) {
                 try {
                     Files.createDirectories(path);

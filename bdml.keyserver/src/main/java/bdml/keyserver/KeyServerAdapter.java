@@ -24,17 +24,16 @@ public class KeyServerAdapter implements KeyServer {
 
     private static final String FILENAME = "keyPairMap.json";
 
-    private final String FILEPATH;
+    private final String filepath;
 
     private Map<String, Subject> registeredKeys;
 
     public KeyServerAdapter(Properties configuration) {
-        String outputDirectory = getProperty(configuration, OUTPUT_DIRECTORY_KEY);
-        this.FILEPATH = outputDirectory + "/" + FILENAME;
+        this.filepath = getProperty(configuration, OUTPUT_DIRECTORY_KEY);
 
         // load previously generated key pairs
         ObjectMapper mapper = new ObjectMapper();
-        File file = new File(FILEPATH);
+        File file = new File(filepath, FILENAME);
         if(file.exists()) {
             try {
                     JsonParser jsonParser = new JsonFactory().createParser(file);
@@ -45,7 +44,7 @@ public class KeyServerAdapter implements KeyServer {
             }
         } else {
             // create path if it doesn't exist
-            Path path = Paths.get(outputDirectory);
+            Path path = Paths.get(filepath);
             if(Files.notExists(path)) {
                 try {
                     Files.createDirectories(path);
@@ -81,7 +80,7 @@ public class KeyServerAdapter implements KeyServer {
 
         ObjectMapper mapper = new ObjectMapper();
         try {
-            mapper.writeValue(new FileWriter(FILEPATH, false), registeredKeys);
+            mapper.writeValue(new FileWriter(new File(filepath, FILENAME), false), registeredKeys);
         } catch (IOException e) {
             throw new MisconfigurationException(e.getMessage());
         }
