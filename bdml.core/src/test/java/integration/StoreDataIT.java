@@ -19,8 +19,6 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class StoreDataIT {
-    //TODO: working directory currently is bdml.core
-
     private static final String PASSWORD_1 = "password1";
     private static final String PASSWORD_2 = "password2";
 

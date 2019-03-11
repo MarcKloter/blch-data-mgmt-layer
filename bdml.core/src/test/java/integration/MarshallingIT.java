@@ -12,7 +12,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 
-import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 
@@ -20,10 +19,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class MarshallingIT {
-    //TODO: working directory currently is bdml.core
-
     private static final String PASSWORD_1 = "password1";
-    private static final String PASSWORD_2 = "password2";;
+    private static final String PASSWORD_2 = "password2";
 
     private static final Data DATA = new Data("data string");
     private static final DataIdentifier IDENTIFIER = DataIdentifier.decode("2149406ec775b60d2d88ac170947a6bc458b0e0dca860eedd122bf9950ca1779");

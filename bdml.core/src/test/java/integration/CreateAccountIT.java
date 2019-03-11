@@ -11,8 +11,6 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class CreateAccountIT {
-    //TODO: working directory currently is bdml.core
-
     private static final String PASSWORD = "password";
 
     private Core core;
