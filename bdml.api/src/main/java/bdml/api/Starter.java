@@ -30,7 +30,7 @@ public class Starter {
 
         Spark.secure(keystoreFile, keystorePassword, truststoreFile, truststorePassword);
 
-        Spark.initExceptionHandler((e) -> {
+        Spark.initExceptionHandler(e -> {
             LOGGER.error(e.getMessage());
             System.exit(1);
         });
