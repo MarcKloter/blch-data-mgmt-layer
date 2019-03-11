@@ -18,21 +18,21 @@ import java.util.Map;
 public class AccountMap {
     private static final String FILENAME = "accountMap.json";
 
-    private final String FILEPATH;
+    private final String filepath;
 
-    private Map<String, String> accountMap;
+    private Map<String, String> mapping;
 
     public AccountMap(String outputDirectory) {
-        this.FILEPATH = outputDirectory + "/" + FILENAME;
+        this.filepath = outputDirectory;
 
         // load persisted accounts
         ObjectMapper mapper = new ObjectMapper();
-        File file = new File(FILEPATH);
+        File file = new File(filepath, FILENAME);
         if(file.exists()) {
             try {
                 JsonParser jsonParser = new JsonFactory().createParser(file);
                 JavaType valueType = mapper.getTypeFactory().constructParametricType(Map.class, String.class, String.class);
-                this.accountMap = mapper.readValue(jsonParser, valueType);
+                this.mapping = mapper.readValue(jsonParser, valueType);
             } catch (IOException e) {
                 throw new MisconfigurationException(e.getMessage());
             }
@@ -47,23 +47,23 @@ public class AccountMap {
                 }
             }
 
-            this.accountMap = new HashMap<>();
+            this.mapping = new HashMap<>();
         }
     }
 
     public void put(String identifier, String address) {
-        this.accountMap.put(identifier, address);
+        this.mapping.put(identifier, address);
 
         // write map to file
         ObjectMapper mapper = new ObjectMapper();
         try {
-            mapper.writeValue(new FileWriter(FILEPATH, false), accountMap);
+            mapper.writeValue(new FileWriter(new File(filepath, FILENAME), false), mapping);
         } catch (IOException e) {
             throw new MisconfigurationException(e.getMessage());
         }
     }
 
     public String get(String identifier) {
-        return this.accountMap.get(identifier);
+        return this.mapping.get(identifier);
     }
 }
