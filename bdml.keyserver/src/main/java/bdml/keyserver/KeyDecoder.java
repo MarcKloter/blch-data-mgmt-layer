@@ -8,6 +8,10 @@ import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
 
 public class KeyDecoder {
+    private KeyDecoder() {
+        throw new IllegalStateException("Utility class");
+    }
+
     private static final String KEY_GEN_ALG = "EC";
 
     public static PublicKey decodePublicKey(String encodedKey) {

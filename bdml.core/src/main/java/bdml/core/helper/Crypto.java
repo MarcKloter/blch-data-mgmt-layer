@@ -13,6 +13,10 @@ import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
 public class Crypto {
+    private Crypto() {
+        throw new IllegalStateException("Utility class");
+    }
+
     private static final String HASH_FUNCTION = "SHA-256";
     private static final String SYMMETRIC_ALGORITHM = "AES";
     // using PKCS#7 padding (identifier in the SUN provider misleading)

@@ -6,6 +6,10 @@ import java.security.MessageDigest;
 import java.util.Base64;
 
 public class Util {
+    private Util() {
+        throw new IllegalStateException("Utility class");
+    }
+
     /**
      * Calculates the SHA-256 message digest of the given String.
      *

@@ -19,6 +19,8 @@ public class CacheImpl implements Cache {
     private static final String OUTPUT_DIRECTORY_KEY = "bdml.output.directory";
 
     private static final String CIPHER = "AES";
+    private static final String POINTER = "pointer";
+    private static final String POLL_POINTER = "poll-pointer";
 
     // fallback value if a cache file was deleted or corrupt, should be set to the block when the application was deployed
     private final String fallbackBlock;
@@ -129,7 +131,7 @@ public class CacheImpl implements Cache {
     public String getPointer(Account account) {
         Connection conn = getConnection(account);
         try {
-            return getVariable(conn, "pointer");
+            return getVariable(conn, POINTER);
         } catch (SQLException e) {
             throw new MisconfigurationException(e.getMessage());
         }
@@ -139,7 +141,7 @@ public class CacheImpl implements Cache {
     public void setPointer(Account account, String pointer) {
         Connection conn = getConnection(account);
         try {
-            setVariable(conn, "pointer", pointer);
+            setVariable(conn, POINTER, pointer);
         } catch (SQLException e) {
             throw new MisconfigurationException(e.getMessage());
         }
@@ -149,7 +151,7 @@ public class CacheImpl implements Cache {
     public String getPollPointer(Account account) {
         Connection conn = getConnection(account);
         try {
-            return getVariable(conn, "poll-pointer");
+            return getVariable(conn, POLL_POINTER);
         } catch (SQLException e) {
             throw new MisconfigurationException(e.getMessage());
         }
@@ -159,7 +161,7 @@ public class CacheImpl implements Cache {
     public void setPollPointer(Account account, String pointer) {
         Connection conn = getConnection(account);
         try {
-            setVariable(conn, "poll-pointer", pointer);
+            setVariable(conn, POLL_POINTER, pointer);
         } catch (SQLException e) {
             throw new MisconfigurationException(e.getMessage());
         }
@@ -322,9 +324,9 @@ public class CacheImpl implements Cache {
         // initialize pointers to the blocks of the connected blockchain
         String sql = "INSERT INTO VARIABLES(key, value) VALUES(?, ?), (?, ?)";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, "pointer");
+            stmt.setString(1, POINTER);
             stmt.setString(2, pointer);
-            stmt.setString(3, "poll-pointer");
+            stmt.setString(3, POLL_POINTER);
             stmt.setString(4, pointer);
             stmt.executeUpdate();
         }

@@ -4,6 +4,10 @@ import java.util.Collection;
 import java.util.Objects;
 
 public class Assert {
+    private Assert() {
+        throw new IllegalStateException("Utility class");
+    }
+
     /**
      * Wraps Objects.requireNonNull for uniform messages.
      *
