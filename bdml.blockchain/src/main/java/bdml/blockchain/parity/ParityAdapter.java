@@ -41,15 +41,15 @@ import java.util.stream.Collectors;
 
 public class ParityAdapter {
     private static final String HEX_PREFIX = "0x";
-    private final String EVENT_TOPIC = EventEncoder.encode(EventStorage.DATAEVENT_EVENT);
-    private final List<String> CONTRACT_ADDRESS;
+    private static final String EVENT_TOPIC = EventEncoder.encode(EventStorage.DATAEVENT_EVENT);
+    private final List<String> deployedContracts;
 
     private Admin web3j;
     private Disposable eventSubscription;
 
     public ParityAdapter(String url, String contractAddress) {
         this.web3j = Admin.build(new HttpService(url));
-        this.CONTRACT_ADDRESS = Collections.singletonList(contractAddress);
+        this.deployedContracts = Collections.singletonList(contractAddress);
         checkContract();
     }
 
@@ -60,7 +60,7 @@ public class ParityAdapter {
      * @throws MisconfigurationException if one of the addresses does not contain contract code.
      */
     private void checkContract() {
-        for(String contractAddress : CONTRACT_ADDRESS) {
+        for(String contractAddress : deployedContracts) {
             EthGetCode contract;
             try {
                 contract = web3j.ethGetCode(contractAddress, DefaultBlockParameterName.LATEST).send();
@@ -102,13 +102,8 @@ public class ParityAdapter {
     public String storeData(String fromAddress, String password, byte[] identifier, byte[] frame) {
         TransactionManager transactionManager = new PersonalTransactionManager(web3j, fromAddress, password);
 
-        // TODO: GAS LIMIT has to be determined dynamically
-        // TODO: take a look at https://github.com/web3j/web3j/blob/master/integration-tests/src/test/java/org/web3j/protocol/scenarios/EventFilterIT.java
-        BigInteger GAS_PRICE = BigInteger.valueOf(0x0);
-        BigInteger GAS_LIMIT = BigInteger.valueOf(0xfffff);
-
-        ContractGasProvider gasProvider = new StaticGasProvider(GAS_PRICE, GAS_LIMIT);
-        EventStorage contract = EventStorage.load(CONTRACT_ADDRESS.get(0), web3j, transactionManager, gasProvider);
+        ContractGasProvider gasProvider = new StaticGasProvider(BigInteger.valueOf(0x0), BigInteger.valueOf(0xfffff));
+        EventStorage contract = EventStorage.load(deployedContracts.get(0), web3j, transactionManager, gasProvider);
         try {
             TransactionReceipt receipt = contract.newData(new BigInteger(Hex.encodeHexString(identifier), 16), frame).send();
             // the receipt holds amongst other things: block hash, transaction index, transaction hash
@@ -129,6 +124,10 @@ public class ParityAdapter {
         Objects.requireNonNull(identifier, "Parameter 'identifier' cannot be null.");
 
         List<EthLog.LogResult> results = getLogs(identifier, null, null, null);
+
+        // results is null if getLogs fails (e.g. due to data size limit in light nodes)
+        if(results == null)
+            throw new MisconfigurationException("An error occurred during getLogs.");
 
         // proof of concept implementation: take the oldest event matching the identifier
         return results.stream().findFirst().map(this::retrieveFrame).orElse(null);
@@ -188,7 +187,7 @@ public class ParityAdapter {
         // topics to filter for
         List<String> topics = Collections.singletonList(EVENT_TOPIC);
 
-        Flowable<LogNotification> notifications = Web3j.build(service).logsNotifications(CONTRACT_ADDRESS, topics);
+        Flowable<LogNotification> notifications = Web3j.build(service).logsNotifications(deployedContracts, topics);
         this.eventSubscription = notifications.subscribe(logNotification -> {
             Log log = logNotification.getParams().getResult();
 
@@ -231,7 +230,7 @@ public class ParityAdapter {
         DefaultBlockParameter from = (fromBlock != null) ? new DefaultBlockParameterNumber(fromBlock) : DefaultBlockParameterName.EARLIEST;
         DefaultBlockParameter to = (toBlock != null) ? new DefaultBlockParameterNumber(toBlock) : DefaultBlockParameterName.LATEST;
 
-        EthFilter filter = (limit != null) ? new ParityFilter(from, to, CONTRACT_ADDRESS, limit) : new EthFilter(from, to, CONTRACT_ADDRESS);
+        EthFilter filter = (limit != null) ? new ParityFilter(from, to, deployedContracts, limit) : new EthFilter(from, to, deployedContracts);
 
         // filter for the event topic
         filter.addSingleTopic(EVENT_TOPIC);

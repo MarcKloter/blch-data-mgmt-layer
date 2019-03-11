@@ -6,6 +6,10 @@ import java.io.*;
 import java.util.Properties;
 
 public class Configuration {
+    private Configuration() {
+        throw new IllegalStateException("Utility class");
+    }
+
     /**
      * Loads the provided {@code defaultConfigFile} .properties file from the classpath.
      * Loads the provided {@code appConfigFileName} .properties file from the classpath if exists.

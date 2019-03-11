@@ -6,7 +6,7 @@ import bdml.core.domain.exceptions.CapabilityFormatException;
 public class Capability {
     private static final int BYTES = 32;
 
-    private final byte[] capability;
+    private final byte[] value;
     private final DataIdentifier identifier;
 
     public Capability(byte[] capability) {
@@ -16,7 +16,7 @@ public class Capability {
         if (capability.length != BYTES)
             throw new CapabilityFormatException(String.format("The given capability is %d bytes, expected %d bytes.", capability.length, BYTES));
 
-        this.capability = capability;
+        this.value = capability;
         this.identifier = new DataIdentifier(Crypto.hashValue(capability));
     }
 
@@ -32,6 +32,6 @@ public class Capability {
     }
 
     public byte[] toByteArray() {
-        return capability;
+        return value;
     }
 }

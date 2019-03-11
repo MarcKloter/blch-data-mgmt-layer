@@ -12,6 +12,10 @@ import org.web3j.tx.gas.StaticGasProvider;
 import java.math.BigInteger;
 
 public class Setup {
+    private Setup() {
+        throw new IllegalStateException("Utility class");
+    }
+
     /**
      * Generates the java wrapper source code for a smart contract.
      */
@@ -34,19 +38,15 @@ public class Setup {
      * @return Address of the deployed smart contract.
      */
     public static String deploySmartContract(String url, String fromAddress, String password) {
-        BigInteger GAS_PRICE = BigInteger.valueOf(0x0);
-        BigInteger GAS_LIMIT = BigInteger.valueOf(0xfffff);
-
         Admin web3j = Admin.build(new HttpService(url));
         TransactionManager transactionManager = new PersonalTransactionManager(web3j, fromAddress, password);
-        ContractGasProvider gasProvider = new StaticGasProvider(GAS_PRICE, GAS_LIMIT);
+        ContractGasProvider gasProvider = new StaticGasProvider(BigInteger.valueOf(0x0), BigInteger.valueOf(0xfffff));
 
         try {
             Contract contract = EventStorage.deploy(web3j, transactionManager, gasProvider).send();
             return contract.getContractAddress();
         } catch(Exception e) {
-            // TODO: handle exception
-            throw new RuntimeException();
+            throw new IllegalStateException(e);
         }
     }
 }
