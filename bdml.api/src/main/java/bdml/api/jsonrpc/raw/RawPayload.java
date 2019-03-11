@@ -25,4 +25,9 @@ public class RawPayload implements Payload {
     public Data processCapabilities(Function<Capability, DataIdentifier> converter) {
         return new RawData(data, attachments.stream().map(converter).collect(Collectors.toSet()));
     }
+
+    @Override
+    public boolean isValid() {
+        return !attachments.contains(null);
+    }
 }

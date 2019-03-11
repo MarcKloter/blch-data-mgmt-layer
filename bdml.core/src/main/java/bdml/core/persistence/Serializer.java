@@ -5,7 +5,7 @@ public interface Serializer {
 
     Payload deserializePayload(byte[] payload) throws DeserializationException;
 
-    byte[] serializeFrame(Frame frame);
+    byte[] serializeDocument(Document doc);
 
-    Frame deserializeFrame(byte[] frame) throws DeserializationException;
+    Document deserializeDocument(byte[] doc) throws DeserializationException;
 }

@@ -1,5 +1,7 @@
 package bdml.core.cache.domain;
 
+import bdml.services.BlockTime;
+
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Optional;
@@ -7,23 +9,21 @@ import java.util.Optional;
 public class Data {
     private byte[] identifier;
     private byte[] capability;
-    private boolean isAttachment;
-    private boolean recursivelyParsed;
+    private boolean temporary;
 
-    public Data(byte[] identifier, byte[] capability, boolean isAttachment, boolean recursivelyParsed) {
+    public Data(byte[] identifier, byte[] capability, boolean temporary) {
         this.identifier = identifier;
         this.capability = capability;
-        this.isAttachment = isAttachment;
-        this.recursivelyParsed = recursivelyParsed;
+        this.temporary = temporary;
     }
 
     public static Optional<Data> buildFrom(ResultSet rs) throws SQLException {
         if(rs.next()) {
             byte[] identifier = rs.getBytes("identifier");
             byte[] capability = rs.getBytes("capability");
-            boolean isAttachment = rs.getBoolean("attachment");
-            boolean recursivelyParsed = rs.getBoolean("recursively_parsed");
-            return Optional.of(new Data(identifier, capability, isAttachment, recursivelyParsed));
+            boolean temporary = rs.getBoolean("temporary");
+
+            return Optional.of(new Data(identifier, capability, temporary));
         } else {
             return Optional.empty();
         }
@@ -37,11 +37,7 @@ public class Data {
         return capability;
     }
 
-    public boolean isAttachment() {
-        return isAttachment;
-    }
-
-    public boolean wasRecursivelyParsed() {
-        return recursivelyParsed;
+    public boolean isTemporary() {
+        return temporary;
     }
 }

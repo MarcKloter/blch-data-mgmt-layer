@@ -7,11 +7,65 @@
 				"type": "uint256"
 			},
 			{
-				"name": "frame",
+				"name": "document",
 				"type": "bytes"
 			}
 		],
-		"name": "newData",
+		"name": "newSecretData",
+		"outputs": [],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [
+			{
+				"name": "identifier",
+				"type": "uint160"
+			},
+			{
+				"name": "token",
+				"type": "bytes"
+			}
+		],
+		"name": "newAccess",
+		"outputs": [],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [
+			{
+				"name": "identifier",
+				"type": "uint160"
+			},
+			{
+				"name": "token",
+				"type": "bytes"
+			}
+		],
+		"name": "newAmend",
+		"outputs": [],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [
+			{
+				"name": "identifier",
+				"type": "uint256"
+			},
+			{
+				"name": "document",
+				"type": "bytes"
+			}
+		],
+		"name": "newPublicData",
 		"outputs": [],
 		"payable": false,
 		"stateMutability": "nonpayable",
@@ -27,11 +81,62 @@
 			},
 			{
 				"indexed": false,
-				"name": "frame",
+				"name": "document",
 				"type": "bytes"
 			}
 		],
-		"name": "DataEvent",
+		"name": "SecretDataEvent",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"name": "identifier",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"name": "document",
+				"type": "bytes"
+			}
+		],
+		"name": "PublicDataEvent",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"name": "identifier",
+				"type": "uint160"
+			},
+			{
+				"indexed": false,
+				"name": "token",
+				"type": "bytes"
+			}
+		],
+		"name": "AccessEvent",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"name": "identifier",
+				"type": "uint160"
+			},
+			{
+				"indexed": false,
+				"name": "token",
+				"type": "bytes"
+			}
+		],
+		"name": "AmendEvent",
 		"type": "event"
 	}
 ]

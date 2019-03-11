@@ -1,0 +1,44 @@
+CREATE TABLE DATA(
+    identifier BINARY(32) NOT NULL,
+    block Long NOT NULL,
+    index Long NOT NULL,
+    hash BINARY(32) NOT NULL,
+    plain BOOLEAN NOT NULL,
+);
+
+CREATE TABLE ACCESS(
+    identifier BINARY(32) NOT NULL,
+    block Long NOT NULL,
+    hash BINARY(32) NOT NULL,
+);
+
+CREATE TABLE AMEND(
+    identifier BINARY(32) NOT NULL,
+    block Long NOT NULL,
+    hash BINARY(32) NOT NULL,
+);
+
+ALTER TABLE DATA ADD PRIMARY KEY (block, index);
+CREATE INDEX ID_DATA_INDEX ON DATA(identifier);
+CREATE INDEX ID_ACCESS_INDEX ON ACCESS(identifier, block);
+CREATE INDEX ID_AMEND_INDEX ON AMEND(identifier, block);
+
+CREATE TABLE BLOCK(
+      next LONG PRIMARY KEY,
+);
+
+CREATE TABLE PENDING_DATA(
+     identifier BINARY(32) PRIMARY KEY,
+     frame LONGVARBINARY NOT NULL,
+     plain BOOLEAN NOT NULL,
+);
+
+CREATE TABLE PENDING_TOKEN(
+     identifier BINARY(32) NOT NULL,
+     token LONGVARBINARY NOT NULL,
+);
+
+CREATE TABLE PENDING_AMENDMENT(
+      identifier BINARY(32) NOT NULL,
+      token LONGVARBINARY NOT NULL,
+);

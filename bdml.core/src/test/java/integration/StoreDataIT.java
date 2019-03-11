@@ -1,19 +1,17 @@
 package integration;
 
-import bdml.core.CoreService;
 import bdml.core.Core;
-import bdml.core.domain.DataIdentifier;
-import bdml.core.domain.Subject;
+import bdml.core.CoreService;
+import bdml.core.PersonalCoreService;
+import bdml.core.PersonalCore;
+import bdml.core.domain.*;
 import bdml.core.domain.exceptions.AuthenticationException;
-import bdml.core.domain.Account;
-import bdml.core.domain.Data;
-import bdml.core.domain.exceptions.NotAuthorizedException;
+import bdml.core.domain.exceptions.DataUnavailableException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 
 import java.util.Collections;
-import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -34,49 +32,37 @@ class StoreDataIT {
     private Subject subject1;
     private Subject subject2;
 
+    private PersonalCore core1;
+    private PersonalCore core2;
+
     @BeforeAll
-    void setup() {
+    void setup() throws AuthenticationException {
         this.core = CoreService.getInstance();
 
         this.subject1 = core.createAccount(PASSWORD_1);
         this.account1 = new Account(subject1, PASSWORD_1);
+        this.core1 = core.getPersonalService(account1);
 
         this.subject2 = core.createAccount(PASSWORD_2);
         this.account2 = new Account(subject2, PASSWORD_2);
+        this.core2 = core.getPersonalService(account2);
     }
 
     @Test
     void Invalid_Account() {
         Account invalidAccount = new Account(subject1, "");
-        assertThrows(AuthenticationException.class, () -> core.storeData(DATA, invalidAccount));
-    }
-
-    @Test
-    void Null_Account() {
-        assertThrows(NullPointerException.class, () -> core.storeData(DATA, null));
+        assertThrows(AuthenticationException.class, () -> core.getPersonalService(invalidAccount));
     }
 
     @Test
     void Null_Data() {
-        assertThrows(NullPointerException.class, () -> core.storeData(null, account1));
-    }
-
-    @Test
-    void Allow_Null_Subjects() {
-        DataIdentifier identifier = assertDoesNotThrow(() -> core.storeData(DATA, account1, null));
-        assertNotNull(identifier);
-    }
-
-    @Test
-    void Allow_Empty_Subjects() {
-        DataIdentifier identifier = assertDoesNotThrow(() -> core.storeData(DATA, account1, Collections.emptySet()));
-        assertNotNull(identifier);
+        assertThrows(NullPointerException.class, () -> core1.storeData(null));
     }
 
     @Test
     void Allow_Null_Attachments() {
         Data nullAttachments = new RawData(DATA.getData(), null);
-        DataIdentifier identifier = assertDoesNotThrow(() -> core.storeData(nullAttachments, account1));
+        DataIdentifier identifier = assertDoesNotThrow(() -> core1.storeData(nullAttachments));
         assertNotNull(identifier);
     }
 
@@ -85,35 +71,40 @@ class StoreDataIT {
         DataIdentifier invalidIdentifier = DataIdentifier.decode("0".repeat(64));
         Data nonExistentAttachment = new RawData(DATA.getData(), Collections.singleton(invalidIdentifier));
 
-        assertThrows(IllegalArgumentException.class, () -> core.storeData(nonExistentAttachment, account1));
+        assertNull(assertDoesNotThrow( () -> core1.storeData(nonExistentAttachment)));
     }
 
     @Test
-    void Not_Authorized_Attachments() {
-        DataIdentifier account1NotAuthorized = assertDoesNotThrow(() -> core.storeData(DATA, account2));
+    void Not_Authorized_Attachments() throws Exception {
+        DataIdentifier account1NotAuthorized = assertDoesNotThrow(() -> core2.storeData(DATA));
         assertNotNull(account1NotAuthorized);
-
+        Awaiter.await(account1NotAuthorized, core2);
         Data notAuthorizedAttachments = new RawData(DATA.getData(), Collections.singleton(account1NotAuthorized));
-
-        assertThrows(NotAuthorizedException.class, () -> core.storeData(notAuthorizedAttachments, account1));
+        assertNull(assertDoesNotThrow(() -> core1.storeData(notAuthorizedAttachments)));
     }
 
     @Test
-    void Allow_Self_Addressed() {
+    void Allow_Self_Addressed() throws Exception {
         // Note: the account will implicitly be added to the recipients, this is not the intended method utilization
-        DataIdentifier identifier = assertDoesNotThrow(() -> core.storeData(DATA, account1, Collections.singleton(subject1)));
+        DataIdentifier identifier = assertDoesNotThrow(() -> core1.storeData(DATA));
         assertNotNull(identifier);
+        Awaiter.await(identifier, core1);
+        assertDoesNotThrow(() -> core1.grantAccess(identifier,subject1));
     }
 
     @Test
-    void Store_Data_Multiple_Subjects() {
-        DataIdentifier identifier = assertDoesNotThrow(() -> core.storeData(DATA, account1, Set.of(subject1, subject2)));
+    void Store_Data_Multiple_Subjects() throws Exception {
+        DataIdentifier identifier = assertDoesNotThrow(() -> core1.storeData(DATA));
         assertNotNull(identifier);
+        Awaiter.await(identifier, core1);
+        assertDoesNotThrow(() -> core1.grantAccess(identifier, subject1));
+        assertDoesNotThrow(() -> core1.grantAccess(identifier, subject2));
+        Awaiter.await(identifier, core2);
     }
 
     @Test
     void Store_Data() {
-        DataIdentifier identifier = assertDoesNotThrow(() -> core.storeData(DATA, account1));
+        DataIdentifier identifier = assertDoesNotThrow(() -> core1.storeData(DATA));
         assertNotNull(identifier);
     }
 }

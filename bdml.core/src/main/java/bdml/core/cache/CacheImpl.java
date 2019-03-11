@@ -1,9 +1,9 @@
 package bdml.core.cache;
 
 import bdml.core.cache.domain.Data;
+import bdml.core.cache.domain.Link;
 import bdml.core.domain.Capability;
 import bdml.core.domain.DataIdentifier;
-import bdml.core.domain.TreeNode;
 import bdml.services.helper.Account;
 import bdml.services.exceptions.MisconfigurationException;
 import bdml.services.exceptions.MissingConfigurationException;
@@ -11,26 +11,27 @@ import org.h2.tools.RunScript;
 
 import java.io.InputStreamReader;
 import java.sql.*;
-import java.util.HashSet;
-import java.util.Optional;
-import java.util.Properties;
-import java.util.Set;
+import java.util.*;
 
-public class CacheImpl implements Cache {
+public class CacheImpl implements PersonalCache {
     // mandatory configuration properties
     private static final String FALLBACK_BLOCK_KEY = "bdml.cache.fallback.block";
     private static final String OUTPUT_DIRECTORY_KEY = "bdml.output.directory";
-
     private static final String CIPHER = "AES";
 
+    private final Account account;
+    private final Connection conn;
+
     // fallback value if a cache file was deleted or corrupt, should be set to the block when the application was deployed
-    private final String fallbackBlock;
+    private final long fallbackBlock;
     private final String outputDirectory;
 
-    public CacheImpl(Properties configuration) {
+    public CacheImpl(Account account, Properties configuration) {
         // load configuration
-        this.fallbackBlock = getProperty(configuration, FALLBACK_BLOCK_KEY);
+        this.fallbackBlock = Long.parseLong(getProperty(configuration, FALLBACK_BLOCK_KEY));
         this.outputDirectory = getProperty(configuration, OUTPUT_DIRECTORY_KEY);
+        this.account = account;
+        this.conn = connectOrCreate();
     }
 
     private String getProperty(Properties configuration, String property) {
@@ -41,25 +42,15 @@ public class CacheImpl implements Cache {
     }
 
     @Override
-    public void initialize(Account account, String pointer) {
+    public void addCapability(Capability capability, boolean temporary) {
         try {
-            createCache(account, pointer);
-        } catch (SQLException e) {
-            throw new IllegalStateException("Account has been initialized before.");
-        }
-    }
-
-    @Override
-    public void addCapability(Account account, Capability capability, boolean isAttachment) {
-        try (Connection conn = connectOrCreate(account)) {
             DataIdentifier identifier = capability.getIdentifier();
-            Optional<Data> data = getData(conn, identifier);
+            Optional<Data> data = getData(identifier);
             if (data.isEmpty()) {
-                setData(conn, new Data(identifier.toByteArray(), capability.toByteArray(), isAttachment, false));
-            } else {
-                // only allow attachments to become non-attachments (if frame was never parsed directly before)
-                if (isAttachment && !data.get().isAttachment())
-                    setIsAttachment(conn, identifier);
+                setData(new Data(identifier.toByteArray(), capability.toByteArray(), temporary));
+                if(!temporary){
+                    addToLog(identifier);
+                }
             }
         } catch (SQLException e) {
             switch (e.getErrorCode()) {
@@ -73,9 +64,27 @@ public class CacheImpl implements Cache {
     }
 
     @Override
-    public Optional<Capability> getCapability(Account account, DataIdentifier identifier) {
-        try (Connection conn = connectOrCreate(account)) {
-            Optional<Data> data = getData(conn, identifier);
+    public void addLink(DataIdentifier source, DataIdentifier target, boolean isAmend) {
+        try {
+            Link link = new Link(source.toByteArray(), target.toByteArray(), isAmend);
+            if (!hasLink(link)) {
+                setLink(link);
+            }
+        } catch (SQLException e) {
+            switch (e.getErrorCode()) {
+                case 22001: // VALUE_TOO_LONG
+                case 23502: // NULL_NOT_ALLOWED
+                    throw new IllegalArgumentException(e.getMessage());
+                default:
+                    throw new MisconfigurationException(e.getMessage());
+            }
+        }
+    }
+
+    @Override
+    public Optional<Capability> getCapability(DataIdentifier identifier) {
+        try {
+            Optional<Data> data = getData(identifier);
             return data.map(Data::getCapability).map(Capability::new);
         } catch (SQLException e) {
             throw new MisconfigurationException(e.getMessage());
@@ -83,33 +92,49 @@ public class CacheImpl implements Cache {
     }
 
     @Override
-    public void setRecursivelyParsed(Account account, DataIdentifier identifier) {
-        try (Connection conn = connectOrCreate(account)) {
-            Optional<Data> data = getData(conn, identifier);
-            if (data.isEmpty())
-                throw new IllegalArgumentException(String.format("There was no data found identified by '%s'", identifier.toString()));
+    public Set<DataIdentifier> getLink(DataIdentifier identifier, boolean isAmend) {
+        String sql = "SELECT target FROM LINK WHERE source = ? AND amend = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setBytes(1, identifier.toByteArray());
+            stmt.setBoolean(2, isAmend);
+            try (ResultSet rs = conn.createStatement().executeQuery(sql)) {
+                Set<DataIdentifier> result = new HashSet<>();
+                while (rs.next())
+                    result.add(new DataIdentifier(rs.getBytes("identifier")));
+                return result;
+            }
+        }catch (SQLException e) {
+            throw new MisconfigurationException(e.getMessage());
+        }
 
-            if (!data.get().wasRecursivelyParsed())
-                setWasRecursivelyParsed(conn, identifier.toByteArray());
+    }
+
+    @Override
+    public Optional<Boolean> makePermanentIfExists(DataIdentifier identifier){
+        try {
+            Optional<Data> data = getData(identifier);
+            if(data.isPresent()) {
+                if(data.get().isTemporary()) {
+                    addToLog(identifier);
+                    makePermanent(identifier);
+                    return Optional.of(true);
+                } else {
+                    return Optional.of(false);
+                }
+            } else {
+                return Optional.empty();
+            }
         } catch (SQLException e) {
             throw new MisconfigurationException(e.getMessage());
         }
     }
 
-    @Override
-    public boolean wasRecursivelyParsed(Account account, DataIdentifier identifier) {
-        try (Connection conn = connectOrCreate(account)) {
-            Optional<Data> data = getData(conn, identifier);
-            return data.map(Data::wasRecursivelyParsed).orElse(false);
-        } catch (SQLException e) {
-            throw new MisconfigurationException(e.getMessage());
-        }
-    }
+
 
     @Override
-    public Set<DataIdentifier> getAllIdentifiers(Account account, boolean includeAttachments) {
-        String sql = "SELECT identifier FROM DATA" + (includeAttachments ? " WHERE attachment = FALSE" : "");
-        try (Connection conn = connectOrCreate(account); ResultSet rs = conn.createStatement().executeQuery(sql)) {
+    public Set<DataIdentifier> getAllIdentifiers() {
+        String sql = "SELECT identifier FROM DATA";
+        try (ResultSet rs = conn.createStatement().executeQuery(sql)) {
             Set<DataIdentifier> result = new HashSet<>();
             while (rs.next())
                 result.add(new DataIdentifier(rs.getBytes("identifier")));
@@ -121,63 +146,40 @@ public class CacheImpl implements Cache {
     }
 
     @Override
-    public String getPointer(Account account) {
-        try (Connection conn = connectOrCreate(account)) {
-            return getVariable(conn, "pointer");
+    public Set<DataIdentifier> getNewIdentifiers(){
+        String selctSql = "SELECT identifier FROM FINALIZATION_LOG ";
+        try (ResultSet rsSelect = conn.createStatement().executeQuery(selctSql)) {
+            Set<DataIdentifier> result = new HashSet<>();
+            while (rsSelect.next()) result.add(new DataIdentifier(rsSelect.getBytes("identifier")));
+            String deleteSql = "DELETE FROM FINALIZATION_LOG";
+            try (PreparedStatement stmt = conn.prepareStatement(deleteSql)) {
+                stmt.executeUpdate();
+            }
+            return result;
         } catch (SQLException e) {
             throw new MisconfigurationException(e.getMessage());
         }
     }
 
     @Override
-    public void setPointer(Account account, String pointer) {
-        try (Connection conn = connectOrCreate(account)) {
-            setVariable(conn, "pointer", pointer);
+    public long getPointer() {
+        try {
+            return Long.parseLong(getVariable("pointer"));
         } catch (SQLException e) {
             throw new MisconfigurationException(e.getMessage());
         }
     }
 
     @Override
-    public String getPollPointer(Account account) {
-        try (Connection conn = connectOrCreate(account)) {
-            return getVariable(conn, "poll-pointer");
+    public void setPointer(long pointer) {
+        try {
+            setVariable("pointer", ""+pointer);
         } catch (SQLException e) {
             throw new MisconfigurationException(e.getMessage());
         }
     }
 
-    @Override
-    public void setPollPointer(Account account, String pointer) {
-        try (Connection conn = connectOrCreate(account)) {
-            setVariable(conn, "poll-pointer", pointer);
-        } catch (SQLException e) {
-            throw new MisconfigurationException(e.getMessage());
-        }
-    }
-
-    @Override
-    public void addAttachment(Account account, DataIdentifier attachment, DataIdentifier attachedTo) {
-        String sql = "MERGE INTO ATTACHMENTS KEY(identifier, attached_to) VALUES(?, ?)";
-        try (Connection conn = connectOrCreate(account); PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setBytes(1, attachment.toByteArray());
-            stmt.setBytes(2, attachedTo.toByteArray());
-            stmt.executeUpdate();
-        } catch (SQLException e) {
-            throw new MisconfigurationException(e.getMessage());
-        }
-    }
-
-    @Override
-    public TreeNode<DataIdentifier> getAllAttachments(Account account, DataIdentifier identifier) {
-        try (Connection conn = connectOrCreate(account)) {
-            return getAttachments(conn, identifier);
-        } catch (SQLException e) {
-            throw new MisconfigurationException(e.getMessage());
-        }
-    }
-
-    private Optional<Data> getData(Connection conn, DataIdentifier identifier) throws SQLException {
+    private Optional<Data> getData(DataIdentifier identifier) throws SQLException {
         String sql = "SELECT * FROM DATA WHERE identifier = ?";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setBytes(1, identifier.toByteArray());
@@ -187,50 +189,56 @@ public class CacheImpl implements Cache {
         }
     }
 
-    private TreeNode<DataIdentifier> getAttachments(Connection conn, DataIdentifier identifier) throws SQLException {
-        String sql = "SELECT * FROM ATTACHMENTS WHERE attached_to = ?";
+    private void setData(Data data) throws SQLException {
+        String sql = "INSERT INTO DATA(identifier, capability, temporary) VALUES(?, ?, ?)";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setBytes(1, identifier.toByteArray());
+            stmt.setBytes(1, data.getIdentifier());
+            stmt.setBytes(2, data.getCapability());
+            stmt.setBoolean(3, data.isTemporary());
+            stmt.executeUpdate();
+        }
+    }
+
+    private void setLink(Link link) throws SQLException {
+        String sql = "INSERT INTO LINK(source, target, amend) VALUES(?, ?, ?)";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setBytes(1, link.getSource());
+            stmt.setBytes(2, link.getTarget());
+            stmt.setBoolean(3, link.isAmend());
+            stmt.executeUpdate();
+        }
+    }
+
+    private boolean hasLink(Link link) throws SQLException {
+        String sql = "SELECT  * FROM LINK LIMIT 1 WHERE source = ? AND target = ? AND amend = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setBytes(1, link.getSource());
+            stmt.setBytes(2, link.getTarget());
+            stmt.setBoolean(3, link.isAmend());
+            stmt.executeUpdate();
             try (ResultSet rs = stmt.executeQuery()) {
-                Set<TreeNode<DataIdentifier>> attachments = new HashSet<>();
-                while (rs.next()) {
-                    DataIdentifier attachment = new DataIdentifier(rs.getBytes("identifier"));
-                    attachments.add(getAttachments(conn, attachment));
-                }
-                return new TreeNode<>(identifier, attachments);
+                return rs.next();
             }
         }
     }
 
-    private void setData(Connection conn, Data data) throws SQLException {
-        String sql = "INSERT INTO DATA(identifier, capability, attachment) VALUES(?, ?, ?)";
+    private void addToLog(DataIdentifier identifier) throws SQLException {
+        String sql = "INSERT INTO FINALIZATION_LOG(identifier) VALUES(?)";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setBytes(1, data.getIdentifier());
-            stmt.setBytes(2, data.getCapability());
-            stmt.setBoolean(3, data.isAttachment());
+            stmt.setBytes(1, identifier.toByteArray());
             stmt.executeUpdate();
         }
     }
 
-    private void setIsAttachment(Connection conn, DataIdentifier identifier) throws SQLException {
-        String sql = "UPDATE DATA SET attachment = ? WHERE identifier = ?";
+    private void makePermanent(DataIdentifier identifier) throws SQLException {
+        String sql = "UPDATE DATA SET temporary = false WHERE identifier = ?";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setBoolean(1, true);
-            stmt.setBytes(2, identifier.toByteArray());
+            stmt.setBytes(1, identifier.toByteArray());
             stmt.executeUpdate();
         }
     }
 
-    private void setWasRecursivelyParsed(Connection conn, byte[] identifier) throws SQLException {
-        String sql = "UPDATE DATA SET recursively_parsed = ? WHERE identifier = ?";
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setBoolean(1, true);
-            stmt.setBytes(2, identifier);
-            stmt.executeUpdate();
-        }
-    }
-
-    private String getVariable(Connection conn, String variable) throws SQLException {
+    private String getVariable(String variable) throws SQLException {
         String sql = "SELECT value FROM VARIABLES WHERE key = ?";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, variable);
@@ -241,7 +249,7 @@ public class CacheImpl implements Cache {
         }
     }
 
-    private void setVariable(Connection conn, String variable, String value) throws SQLException {
+    private void setVariable(String variable, String value) throws SQLException {
         String sql = "UPDATE VARIABLES SET value = ? WHERE key = ?;";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, value);
@@ -250,21 +258,23 @@ public class CacheImpl implements Cache {
         }
     }
 
-    private Connection connectOrCreate(Account account) {
+    private Connection connectOrCreate() {
+        Connection con;
         try {
             // only allow to open existing databases
-            return connect(account, ";IFEXISTS=TRUE");
+            con = connect(";IFEXISTS=TRUE");
         } catch (SQLException e1) {
             try {
                 // create an empty cache with a pointer to null
-                return createCache(account, fallbackBlock);
+                con = createCache(fallbackBlock);
             } catch (SQLException e2) {
                 throw new MisconfigurationException(e2.getMessage());
             }
         }
+        return con;
     }
 
-    private Connection connect(Account account, String params) throws SQLException {
+    private Connection connect(String params) throws SQLException {
         String db = account.getIdentifier();
         // combination of file password (used for .db file encryption) and user password
         String pwd = String.format("%s-%s %<s", db, account.getPassword());
@@ -274,9 +284,9 @@ public class CacheImpl implements Cache {
         return DriverManager.getConnection(url, db, pwd);
     }
 
-    private Connection createCache(Account account, String pointer) throws SQLException {
+    private Connection createCache(long pointer) throws SQLException {
         // only allow the creation of non-existent databases
-        Connection conn = connect(account, ";IFEXISTS=FALSE");
+        Connection conn = connect(";IFEXISTS=FALSE");
 
         // create schema
         RunScript.execute(conn, new InputStreamReader(getClass().getResourceAsStream("/schema.sql")));
@@ -285,9 +295,9 @@ public class CacheImpl implements Cache {
         String sql = "INSERT INTO VARIABLES(key, value) VALUES(?, ?), (?, ?)";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, "pointer");
-            stmt.setString(2, pointer);
+            stmt.setLong(2, pointer);
             stmt.setString(3, "poll-pointer");
-            stmt.setString(4, pointer);
+            stmt.setLong(4, pointer);
             stmt.executeUpdate();
         }
 

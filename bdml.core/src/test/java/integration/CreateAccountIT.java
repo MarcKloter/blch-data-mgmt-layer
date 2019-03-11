@@ -2,6 +2,8 @@ package integration;
 
 import bdml.core.Core;
 import bdml.core.CoreService;
+import bdml.core.PersonalCore;
+import bdml.core.PersonalCoreService;
 import bdml.core.domain.Subject;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;

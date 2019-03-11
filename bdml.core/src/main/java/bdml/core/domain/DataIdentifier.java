@@ -7,7 +7,7 @@ import org.apache.commons.codec.binary.Hex;
 import java.util.Arrays;
 
 public class DataIdentifier {
-    private static final int BYTES = 32;
+    public static final int BYTES = 32;
     private final byte[] identifier;
 
     public DataIdentifier(byte[] identifier) {

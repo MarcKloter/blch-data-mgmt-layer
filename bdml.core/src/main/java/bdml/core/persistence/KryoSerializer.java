@@ -63,20 +63,20 @@ public class KryoSerializer implements Serializer {
     }
 
     @Override
-    public byte[] serializeFrame(Frame frame) {
+    public byte[] serializeDocument(Document doc) {
         //Make sure that we do not serialize a subclass
-        Frame realFrame = new Frame(frame.getVersion(),frame.getEncryptedCapability(),frame.getEncryptedPayload());
+        Document realDoc = new Document(doc.getVersion(),doc.getPayload());
         ByteArrayOutputStream b = new ByteArrayOutputStream();
         Output output = new Output(b);
-        kryo.writeObject(output, realFrame);
+        kryo.writeObject(output, realDoc);
         return output.toBytes();
     }
 
     @Override
-    public Frame deserializeFrame(byte[] frame) throws DeserializationException {
+    public Document deserializeDocument(byte[] doc) throws DeserializationException {
         try {
-            Input input = new Input(frame);
-            return kryo.readObject(input, Frame.class);
+            Input input = new Input(doc);
+            return kryo.readObject(input, Document.class);
         } catch (Exception e){
             throw new DeserializationException(e.getMessage());
         }

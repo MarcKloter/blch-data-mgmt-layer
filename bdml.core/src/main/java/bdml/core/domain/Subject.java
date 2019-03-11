@@ -1,8 +1,8 @@
 package bdml.core.domain;
 
-import bdml.core.helper.Crypto;
 import bdml.core.domain.exceptions.DataIdentifierFormatException;
 import bdml.core.domain.exceptions.SubjectFormatException;
+import bdml.core.helper.Crypto;
 import bdml.services.exceptions.MisconfigurationException;
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
@@ -11,7 +11,7 @@ import java.security.PublicKey;
 import java.util.Arrays;
 
 public class Subject {
-    private static final int BYTES = 20;
+    public static final int BYTES = 20;
 
     private final byte[] subject;
 
@@ -25,7 +25,7 @@ public class Subject {
         this.subject = subject;
     }
 
-    public static Subject decode(String string) {
+    public static Subject decodeAddress(String string) {
         byte[] bytes;
         try {
             bytes = Hex.decodeHex(string);
@@ -40,13 +40,18 @@ public class Subject {
         // take H(key) as the entropy might not be evenly distributed within the key bytes
         byte[] keyDigest = Crypto.hashValue(key.getEncoded());
 
-        if(keyDigest.length < BYTES)
+        if(keyDigest.length < Subject.BYTES)
             throw new MisconfigurationException("Crypto.hashValue(byte[]) returns less bytes than required by Subject.BYTES.");
 
         // take the BYTES*8 LSB as subject
-        byte[] subject = Arrays.copyOfRange(keyDigest, keyDigest.length - BYTES, keyDigest.length);
+        byte[] subject = Arrays.copyOfRange(keyDigest, keyDigest.length - Subject.BYTES, keyDigest.length);
 
         return new Subject(subject);
+    }
+
+
+    public int numBytes() {
+        return BYTES;
     }
 
     public byte[] toBytes() {

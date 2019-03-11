@@ -3,28 +3,32 @@ package bdml.core.persistence;
 import java.util.List;
 
 public class Frame {
-    private int version = 0;
-    private List<byte[]> encryptedCapability = null;
-    private byte[] encryptedPayload = null;
+    private List<AccessToken> access = null;
+    private Document doc = null;
 
     //For Kryo
     private Frame(){}
 
-    public Frame(int version, List<byte[]> encryptedCapability, byte[] encryptedPayload) {
-        this.version = version;
-        this.encryptedCapability = encryptedCapability;
-        this.encryptedPayload = encryptedPayload;
+    public Frame(List<AccessToken> access, Document doc) {
+        this.access = access;
+        this.doc = doc;
+        for(AccessToken a: access) {
+            if(doc.getVersion() != a.getVersion()){
+                throw new IllegalArgumentException("temp");
+            }
+        }
+
     }
 
     public int getVersion() {
-        return version;
+        return doc.getVersion();
     }
 
-    public List<byte[]> getEncryptedCapability() {
-        return encryptedCapability;
+    public List<AccessToken> getAccess() {
+        return access;
     }
 
-    public byte[] getEncryptedPayload() {
-        return encryptedPayload;
+    public Document getDocument() {
+        return doc;
     }
 }

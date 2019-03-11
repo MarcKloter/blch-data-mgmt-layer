@@ -1,7 +1,9 @@
 package bdml.core.helper;
 
 import java.security.*;
+import java.util.AbstractMap;
 import java.util.Arrays;
+import java.util.Map;
 
 import bdml.core.domain.Capability;
 import bdml.services.exceptions.MisconfigurationException;
@@ -18,6 +20,7 @@ public class Crypto {
     // using PKCS#7 padding (identifier in the SUN provider misleading)
     private static final String SYMMETRIC_CIPHER = "AES/CBC/PKCS5Padding";
     private static final int IV_BYTES = 16;
+    private static final int NONCE_BYTES = 4;
 
     /**
      * Symmetrically encrypts the given plaintext using the provided {@code capability} as key.
@@ -105,5 +108,44 @@ public class Crypto {
         System.arraycopy(a, 0, c, 0, a.length);
         System.arraycopy(b, 0, c, a.length, b.length);
         return c;
+    }
+
+
+    public static Map.Entry<Capability, byte[]> selfEncrypt(byte[] data) {
+        byte[] saltedPayload = salt(data);
+        // CAP = H(PAYLOAD)
+        Capability capability = Capability.of(saltedPayload);
+        byte[] encryptedPayload = capabilityEncrypt(capability, saltedPayload);
+
+        return new AbstractMap.SimpleImmutableEntry<>(capability, encryptedPayload);
+    }
+
+    public static byte[] salt(byte[] data) {
+        byte[] nonce = new byte[NONCE_BYTES];
+        new SecureRandom().nextBytes(nonce);
+        return Crypto.concatenate(data,nonce);
+    }
+
+    public static byte[] capabilityEncrypt(Capability capability, byte[] data){
+        return Crypto.symmetricallyEncrypt(capability, data);
+    }
+
+
+    public static byte[] unSalt(byte[] decSaltedPayload) {
+        return Arrays.copyOfRange(decSaltedPayload, 0, decSaltedPayload.length - NONCE_BYTES);
+    }
+
+    public static byte[] capabilityDecrypt(Capability capability, byte[] data){
+        return Crypto.symmetricallyDecrypt(capability, data);
+    }
+
+    public static byte[] selfDecrypt(Capability key, byte[] data) {
+        byte[] decSaltedPayload = capabilityDecrypt(key, data);
+        if(!Capability.of(decSaltedPayload).equals(key)) {
+            //We need a appropriate exception
+            return null;
+        } else {
+            return unSalt(decSaltedPayload);
+        }
     }
 }

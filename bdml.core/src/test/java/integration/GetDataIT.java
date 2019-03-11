@@ -2,17 +2,15 @@ package integration;
 
 import bdml.core.Core;
 import bdml.core.CoreService;
-import bdml.core.domain.Account;
-import bdml.core.domain.Data;
-import bdml.core.domain.DataIdentifier;
-import bdml.core.domain.Subject;
+import bdml.core.PersonalCore;
+import bdml.core.PersonalCoreService;
+import bdml.core.domain.*;
 import bdml.core.domain.exceptions.AuthenticationException;
-import bdml.core.domain.exceptions.NotAuthorizedException;
+import bdml.core.domain.exceptions.DataUnavailableException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 
-import java.util.Collections;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -38,90 +36,96 @@ class GetDataIT {
     private Subject subject2;
     private Subject subject3;
 
+    private PersonalCore core1;
+    private PersonalCore core2;
+    private PersonalCore core3;
+
+
     private DataIdentifier identifier1;
     private DataIdentifier identifier2;
 
     @BeforeAll
-    void setup() throws AuthenticationException {
+    void setup() throws Exception {
         this.core = CoreService.getInstance();
 
         this.subject1 = core.createAccount(PASSWORD_1);
         this.account1 = new Account(subject1, PASSWORD_1);
+        this.core1 = core.getPersonalService(account1);
 
         this.subject2 = core.createAccount(PASSWORD_2);
         this.account2 = new Account(subject2, PASSWORD_2);
+        this.core2 = core.getPersonalService(account2);
 
         this.subject3 = core.createAccount(PASSWORD_3);
         this.account3 = new Account(subject3, PASSWORD_3);
+        this.core3 = core.getPersonalService(account3);
 
-        this.identifier1 = core.storeData(SIMPLE_DATA_1, account1);
-        this.identifier2 = core.storeData(SIMPLE_DATA_2, account2);
+        this.identifier1 = core1.storeData(SIMPLE_DATA_1);
+        this.identifier2 = core2.storeData(SIMPLE_DATA_2);
+
+        Awaiter.await(this.identifier1, core1);
+        Awaiter.await(this.identifier2, core2);
+
     }
 
     @Test
     void Null_DataIdentifier() {
-        assertThrows(NullPointerException.class, () -> core.getData(null, account1));
+        assertThrows(NullPointerException.class, () -> core1.getData(null));
     }
 
     @Test
     void Invalid_DataIdentifier() {
         DataIdentifier invalidIdentifier = DataIdentifier.decode("0".repeat(64));
-        assertThrows(IllegalArgumentException.class, () -> core.getData(invalidIdentifier, account1));
-    }
-
-    @Test
-    void Null_Account() {
-        assertThrows(NullPointerException.class, () -> core.getData(identifier1, null));
-    }
-
-    @Test
-    void Invalid_Account() {
-        Account invalidAccount = new Account(subject1, "");
-        assertThrows(AuthenticationException.class, () -> core.getData(identifier1, invalidAccount));
+        assertThrows(DataUnavailableException.class, () -> core1.getData(invalidIdentifier));
     }
 
     @Test
     void Get_Data() {
-        Data result1 = assertDoesNotThrow(() -> core.getData(identifier1, account1));
+        Data result1 = assertDoesNotThrow(() -> core1.getData(identifier1)).data;
         assertNotNull(result1);
         assertEquals( ((RawData) result1).getData(), SIMPLE_DATA_1.getData());
 
-        Data result2 = assertDoesNotThrow(() -> core.getData(identifier2, account2));
+        Data result2 = assertDoesNotThrow(() -> core2.getData(identifier2)).data;
         assertNotNull(result2);
         assertEquals(((RawData) result2).getData(), SIMPLE_DATA_2.getData());
     }
 
     @Test
     void Get_NotAuthorized_Data() {
-        assertThrows(NotAuthorizedException.class, () -> core.getData(identifier2, account1));
-        assertThrows(NotAuthorizedException.class, () -> core.getData(identifier1, account2));
+        assertThrows(DataUnavailableException.class,() -> core1.getData(identifier2));
+        assertThrows(DataUnavailableException.class,() -> core2.getData(identifier1));
     }
 
     @Test
-    void Get_Addressed_Data() {
-        DataIdentifier identifier = assertDoesNotThrow(() -> core.storeData(SIMPLE_DATA_1, account1, Collections.singleton(subject2)));
-
+    void Get_Addressed_Data() throws Exception {
+        DataIdentifier identifier = assertDoesNotThrow(() -> core1.storeData(SIMPLE_DATA_1));
+        Awaiter.await(identifier, core1);
+        assertDoesNotThrow(() -> core1.grantAccess(identifier, subject2));
         // assert that the account that called storeData can read the data
-        Data result1 = assertDoesNotThrow(() -> core.getData(identifier, account1));
+        Data result1 = assertDoesNotThrow(() -> core1.getData(identifier)).data;
+        Awaiter.await(identifier, core2);
         assertNotNull(result1);
         assertEquals(((RawData) result1).getData(), SIMPLE_DATA_1.getData());
 
+
+
         // assert that the account that was given as subject can read the data
-        Data result2 = assertDoesNotThrow(() -> core.getData(identifier, account2));
+        Data result2 = assertDoesNotThrow(() -> core2.getData(identifier)).data;
         assertNotNull(result2);
         assertEquals(((RawData) result2).getData(), SIMPLE_DATA_1.getData());
 
         // assert that an unrelated account cannot read the data
-        assertThrows(NotAuthorizedException.class, () -> core.getData(identifier, account3));
+        assertThrows(DataUnavailableException.class,() -> core3.getData(identifier));
     }
 
     @Test
-    void Get_Data_With_Attachment() {
+    void Get_Data_With_Attachment() throws Exception {
         Set<DataIdentifier> attachment = Set.of(identifier1);
         Data dataWithAttachment = new RawData(SIMPLE_DATA_1.getData(), attachment);
-        DataIdentifier identifier = assertDoesNotThrow(() -> core.storeData(dataWithAttachment, account1));
-
-        Data result = assertDoesNotThrow(() -> core.getData(identifier, account1));
+        DataIdentifier identifier = assertDoesNotThrow(() -> core1.storeData(dataWithAttachment));
+        assertNotNull(identifier);
+        Awaiter.await(identifier, core1);
+        Data result = assertDoesNotThrow(() -> core1.getData(identifier)).data;
         assertNotNull(result);
         assertEquals(((RawData) result).getData(), SIMPLE_DATA_1.getData());
         assertEquals(((RawData) result).getAttachments().size(), attachment.size());
