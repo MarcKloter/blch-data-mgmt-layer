@@ -2,11 +2,9 @@ package integration;
 
 import bdml.core.Core;
 import bdml.core.CoreService;
-import bdml.core.PersonalCoreService;
 import bdml.core.PersonalCore;
 import bdml.core.domain.*;
 import bdml.core.domain.exceptions.AuthenticationException;
-import bdml.core.domain.exceptions.DataUnavailableException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
@@ -78,7 +76,7 @@ class StoreDataIT {
     void Not_Authorized_Attachments() throws Exception {
         DataIdentifier account1NotAuthorized = assertDoesNotThrow(() -> core2.storeData(DATA));
         assertNotNull(account1NotAuthorized);
-        Awaiter.await(account1NotAuthorized, core2);
+        Awaiter.awaitData(account1NotAuthorized, core2);
         Data notAuthorizedAttachments = new RawData(DATA.getData(), Collections.singleton(account1NotAuthorized));
         assertNull(assertDoesNotThrow(() -> core1.storeData(notAuthorizedAttachments)));
     }
@@ -88,7 +86,7 @@ class StoreDataIT {
         // Note: the account will implicitly be added to the recipients, this is not the intended method utilization
         DataIdentifier identifier = assertDoesNotThrow(() -> core1.storeData(DATA));
         assertNotNull(identifier);
-        Awaiter.await(identifier, core1);
+        Awaiter.awaitData(identifier, core1);
         assertDoesNotThrow(() -> core1.grantAccess(identifier,subject1));
     }
 
@@ -96,10 +94,10 @@ class StoreDataIT {
     void Store_Data_Multiple_Subjects() throws Exception {
         DataIdentifier identifier = assertDoesNotThrow(() -> core1.storeData(DATA));
         assertNotNull(identifier);
-        Awaiter.await(identifier, core1);
+        Awaiter.awaitData(identifier, core1);
         assertDoesNotThrow(() -> core1.grantAccess(identifier, subject1));
         assertDoesNotThrow(() -> core1.grantAccess(identifier, subject2));
-        Awaiter.await(identifier, core2);
+        Awaiter.awaitData(identifier, core2);
     }
 
     @Test

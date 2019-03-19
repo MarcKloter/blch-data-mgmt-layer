@@ -122,10 +122,9 @@ public class EthWeb3Adapter {
     }
 
     /**
-     * Calls the newData method of the deployed smart contract using personal_sendTransaction.
-     * https://wiki.parity.io/JSONRPC-personal-module#personal_sendtransaction
+     * Calls the newData method of the deployed smart contract.
      *
-     * @param identifier 20 bytes identifier as input for the newData method
+     * @param identifier 32 bytes identifier as input for the newData method
      * @param document bytes array containing the frame as input for the newData method
      * @param encrypted indicates if bytes are encrypted or not
      * @return false if the id was already in use and true otherwise
@@ -136,15 +135,12 @@ public class EthWeb3Adapter {
         if(cur_doc.isEmpty()) {
             //we can go ahead
             try {
-                String encIdent = Hex.encodeHexString(identifier);
-                BigInteger numIdent = new BigInteger(encIdent, 16);
-                EventStorage storage = getContract();
                 if(encrypted) {
-                    System.out.println("Store(Data -  Enc): "+encIdent);
-                    storage.newSecretData(numIdent, document).send();
+                    System.out.println("Store(Data -  Enc): " + new String(Hex.encodeHex(identifier)));
+                    getContract().newSecretData(new BigInteger(Hex.encodeHexString(identifier), 16), document).send();
                 } else {
-                    System.out.println("Store(Data - Plain): " + encIdent);
-                    storage.newPublicData(numIdent, document).send();
+                    System.out.println("Store(Data - Plain): " + new String(Hex.encodeHex(identifier)));
+                    getContract().newPublicData(new BigInteger(Hex.encodeHexString(identifier), 16), document).send();
                 }
                 cache.addPendingFrame(identifier,document, encrypted);
                 return true;
@@ -173,6 +169,7 @@ public class EthWeb3Adapter {
             getContract().newAmend(new BigInteger(Hex.encodeHexString(identifier), 16), token).send();
             cache.addPendingAmend(identifier,token);
         } catch (Exception e) {
+            e.printStackTrace();
             throw new MisconfigurationException(e.getMessage());
         }
     }
@@ -337,6 +334,7 @@ public class EthWeb3Adapter {
                     hash = hash.replaceFirst(HEX_PREFIX, "");
                     byte[] byteId = Hex.decodeHex(identifier);
                     byte[] bytehash = Hex.decodeHex(hash);
+                    System.out.println("Committed(Grant): "+identifier);
                     cache.addAccessIndex(byteId, finalBlock.longValue(), bytehash);
                     cache.removePendingToken(byteId, bytehash);
                 }
@@ -354,11 +352,12 @@ public class EthWeb3Adapter {
                 if(log instanceof EthLog.LogObject) {
                     EthLog.LogObject logObj = (EthLog.LogObject)log;
                     String identifier = logObj.getTopics().get(1);
-                    identifier = identifier.replaceFirst(HEX_PREFIX, "").substring(24);
+                    identifier = identifier.replaceFirst(HEX_PREFIX, "");
                     String hash = logObj.getTransactionHash();
                     hash = hash.replaceFirst(HEX_PREFIX, "");
                     byte[] byteId = Hex.decodeHex(identifier);
                     byte[] bytehash = Hex.decodeHex(hash);
+                    System.out.println("Committed(Amend): "+identifier);
                     cache.addAmendIndex(byteId, finalBlock.longValue(), bytehash);
                     cache.removePendingAmend(byteId, bytehash);
                 }

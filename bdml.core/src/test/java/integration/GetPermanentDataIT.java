@@ -13,10 +13,9 @@ import org.junit.jupiter.api.TestInstance;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class GetDataIT {
+class GetPermanentDataIT {
     //TODO: working directory currently is bdml.core
 
     private static final String PASSWORD_1 = "password1";
@@ -68,121 +67,85 @@ class GetDataIT {
         this.identifier2 = core2.storeData(SIMPLE_DATA_2);
         this.identifierPlain = core.publishData(SIMPLE_DATA_PLAIN);
 
-
         Awaiter.awaitData(this.identifier1, core1);
         Awaiter.awaitData(this.identifier2, core2);
         Awaiter.awaitData(this.identifierPlain, core3);
+
+        core1.grantAccess(identifier1, subject1);
+        core2.grantAccess(identifier2, subject2);
+
+        Awaiter.awaitPermanentData(this.identifier1, core1);
+        Awaiter.awaitPermanentData(this.identifier2, core2);
+        Awaiter.awaitPermanentData(this.identifierPlain, core3);
     }
 
     @Test
     void Null_DataIdentifier() {
-        assertThrows(NullPointerException.class, () -> core1.getData(null, true));
+        assertThrows(NullPointerException.class, () -> core1.getData(null, false));
     }
 
     @Test
     void Invalid_DataIdentifier() {
         DataIdentifier invalidIdentifier = DataIdentifier.decode("0".repeat(64));
-        assertThrows(DataUnavailableException.class, () -> core1.getData(invalidIdentifier, true));
+        assertThrows(DataUnavailableException.class, () -> core1.getData(invalidIdentifier, false));
     }
 
     @Test
     void Get_Data() {
-        Data result1 = assertDoesNotThrow(() -> core1.getData(identifier1, true)).data;
+        Data result1 = assertDoesNotThrow(() -> core1.getData(identifier1, false)).data;
         assertNotNull(result1);
         assertEquals( ((RawData) result1).getData(), SIMPLE_DATA_1.getData());
 
-        Data result2 = assertDoesNotThrow(() -> core2.getData(identifier2, true)).data;
+        Data result2 = assertDoesNotThrow(() -> core2.getData(identifier2, false)).data;
         assertNotNull(result2);
         assertEquals(((RawData) result2).getData(), SIMPLE_DATA_2.getData());
     }
 
     @Test
-    void Get_Data_Public() {
-
-        Payload resultPlain = assertDoesNotThrow(() -> core.getPublicData(identifierPlain)).data;
-        assertNotNull(resultPlain);
-        assertEquals(((RawPayload) resultPlain).getData(), SIMPLE_DATA_PLAIN.getData());
-
-        Data resultPlain1 = assertDoesNotThrow(() -> core1.getData(identifierPlain, true)).data;
-        assertNotNull(resultPlain1);
-        assertEquals(((RawData) resultPlain1).getData(), SIMPLE_DATA_PLAIN.getData());
-
-        Data resultPlain2 = assertDoesNotThrow(() -> core2.getData(identifierPlain, true)).data;
-        assertNotNull(resultPlain2);
-        assertEquals(((RawData) resultPlain2).getData(), SIMPLE_DATA_PLAIN.getData());
-
-        Data resultPlain3 = assertDoesNotThrow(() -> core3.getData(identifierPlain, true)).data;
-        assertNotNull(resultPlain3);
-        assertEquals(((RawData) resultPlain3).getData(), SIMPLE_DATA_PLAIN.getData());
-    }
-
-
-    @Test
     void Get_Data_Direct() {
-        Capability cap1  = assertDoesNotThrow(() -> core1.exportCapability(identifier1, true).data);
+        Capability cap1  = assertDoesNotThrow(() -> core1.exportCapability(identifier1, false).data);
         assertNotNull(cap1);
 
         Payload result1 = assertDoesNotThrow(() -> core.getDataDirect(cap1)).data;
         assertNotNull(result1);
         assertEquals( ((RawPayload) result1).getData(), SIMPLE_DATA_1.getData());
 
-        Capability cap2  = assertDoesNotThrow(() -> core2.exportCapability(identifier2, true).data);
+        Capability cap2  = assertDoesNotThrow(() -> core2.exportCapability(identifier2, false).data);
         assertNotNull(cap2);
 
         Payload result2 = assertDoesNotThrow(() -> core.getDataDirect(cap2)).data;
         assertNotNull(result2);
         assertEquals(((RawPayload) result2).getData(), SIMPLE_DATA_2.getData());
 
-
-
-    }
-
-    @Test
-    void Get_Plain_As_Cap() {
-        assertThrows(DataUnavailableException.class,() -> core1.exportCapability(identifierPlain, true));
-        assertThrows(DataUnavailableException.class,() -> core2.exportCapability(identifierPlain, true));
-        assertThrows(DataUnavailableException.class,() -> core3.exportCapability(identifierPlain, true));
     }
 
     @Test
     void Get_NotAuthorized_Data() {
-        assertThrows(DataUnavailableException.class,() -> core1.getData(identifier2, true));
-        assertThrows(DataUnavailableException.class,() -> core2.getData(identifier1, true));
-    }
-
-    @Test
-    void Grant_Plain_Data() {
-        assertThrows(DataUnavailableException.class,() -> core1.grantAccess(identifierPlain, subject1));
-        assertThrows(DataUnavailableException.class,() -> core1.grantAccess(identifierPlain, subject2));
-        assertThrows(DataUnavailableException.class,() -> core1.grantAccess(identifierPlain, subject3));
-        assertThrows(DataUnavailableException.class,() -> core2.grantAccess(identifierPlain, subject1));
-        assertThrows(DataUnavailableException.class,() -> core2.grantAccess(identifierPlain, subject2));
-        assertThrows(DataUnavailableException.class,() -> core2.grantAccess(identifierPlain, subject3));
-        assertThrows(DataUnavailableException.class,() -> core3.grantAccess(identifierPlain, subject1));
-        assertThrows(DataUnavailableException.class,() -> core3.grantAccess(identifierPlain, subject2));
-        assertThrows(DataUnavailableException.class,() -> core3.grantAccess(identifierPlain, subject3));
+        assertThrows(DataUnavailableException.class,() -> core1.getData(identifier2, false));
+        assertThrows(DataUnavailableException.class,() -> core2.getData(identifier1, false));
     }
 
     @Test
     void Get_Addressed_Data() throws Exception {
         DataIdentifier identifier = assertDoesNotThrow(() -> core1.storeData(SIMPLE_DATA_1));
         Awaiter.awaitData(identifier, core1);
-
-        assertDoesNotThrow(() -> core1.grantAccess(identifier, subject2));
+        assertDoesNotThrow(() -> core1.grantAccess(identifier, subject1));
+        Awaiter.awaitPermanentData(identifier, core1);
         // assert that the account that called storeData can read the data
-        Data result1 = assertDoesNotThrow(() -> core1.getData(identifier, true)).data;
-        Awaiter.awaitData(identifier, core2);
+        Data result1 = assertDoesNotThrow(() -> core1.getData(identifier, false)).data;
         assertNotNull(result1);
         assertEquals(((RawData) result1).getData(), SIMPLE_DATA_1.getData());
 
+        assertDoesNotThrow(() -> core1.grantAccess(identifier, subject2));
+        Awaiter.awaitPermanentData(identifier, core2);
 
         // assert that the account that was given as subject can read the data
-        Data result2 = assertDoesNotThrow(() -> core2.getData(identifier, true)).data;
+        Data result2 = assertDoesNotThrow(() -> core2.getData(identifier, false)).data;
         assertNotNull(result2);
         assertEquals(((RawData) result2).getData(), SIMPLE_DATA_1.getData());
 
         // assert that an unrelated account cannot read the data
-        assertThrows(DataUnavailableException.class,() -> core3.getData(identifier, true));
+        assertThrows(DataUnavailableException.class,() -> core3.getData(identifier, false));
     }
 
 
@@ -191,24 +154,29 @@ class GetDataIT {
     void Get_Data_With_Attachment() throws Exception {
         DataIdentifier identifierA = assertDoesNotThrow(() -> core1.storeData(SIMPLE_DATA_1));
         Awaiter.awaitData(identifierA, core1);
+        assertDoesNotThrow(() -> core1.grantAccess(identifierA, subject1));
+        Awaiter.awaitPermanentData(identifierA, core1);
 
         Set<DataIdentifier> attachment = Set.of(identifierA);
         Data dataWithAttachment = new RawData(SIMPLE_DATA_1.getData(), attachment);
         DataIdentifier identifier = assertDoesNotThrow(() -> core1.storeData(dataWithAttachment));
         assertNotNull(identifier);
         Awaiter.awaitData(identifier, core1);
+        assertDoesNotThrow(() -> core1.grantAccess(identifier, subject1));
+        Awaiter.awaitPermanentData(identifier, core1);
 
-        Data resultA = assertDoesNotThrow(() -> core1.getData(identifierA, true)).data;
+        Data resultA = assertDoesNotThrow(() -> core1.getData(identifierA, false)).data;
         assertNotNull(resultA);
 
 
-        Data result = assertDoesNotThrow(() -> core1.getData(identifier, true)).data;
+        Data result = assertDoesNotThrow(() -> core1.getData(identifier, false)).data;
         assertNotNull(result);
         assertEquals(((RawData) result).getData(), SIMPLE_DATA_1.getData());
         assertEquals(((RawData) result).getAttachments().size(), attachment.size());
         assertTrue(((RawData) result).getAttachments().contains(identifierA));
+        Awaiter.awaitPermanentAttachement(identifier, identifierA, core1);
 
-        Set<DataIdentifier> attach = core1.listAttachmentsToData(identifier, true);
+        Set<DataIdentifier> attach = core1.listAttachmentsToData(identifier, false);
         assertNotNull(attach);
         assertTrue(!attach.isEmpty());
         assertTrue(attach.contains(identifierA));
@@ -219,47 +187,53 @@ class GetDataIT {
     void Grant_Data_Over_Attachment() throws Exception {
         DataIdentifier identifierA = assertDoesNotThrow(() -> core1.storeData(SIMPLE_DATA_1));
         Awaiter.awaitData(identifierA, core1);
-
+        assertDoesNotThrow(() -> core1.grantAccess(identifierA, subject1));
+        Awaiter.awaitPermanentData(identifierA, core1);
 
         Set<DataIdentifier> attachment = Set.of(identifierA);
         Data dataWithAttachment = new RawData(SIMPLE_DATA_1.getData(), attachment);
         DataIdentifier identifier = assertDoesNotThrow(() -> core1.storeData(dataWithAttachment));
         assertNotNull(identifier);
         Awaiter.awaitData(identifier, core1);
-
+        assertDoesNotThrow(() -> core1.grantAccess(identifier, subject1));
+        Awaiter.awaitPermanentData(identifier, core1);
 
         assertDoesNotThrow(() -> core1.grantAccess(identifier, subject2));
-        Awaiter.awaitData(identifier, core2);
+        Awaiter.awaitPermanentData(identifier, core2);
 
-        Data resultA = assertDoesNotThrow(() -> core2.getData(identifierA, true)).data;
+        Data resultA = assertDoesNotThrow(() -> core2.getData(identifierA, false)).data;
         assertNotNull(resultA);
 
-        Data result = assertDoesNotThrow(() -> core2.getData(identifier, true)).data;
+        Data result = assertDoesNotThrow(() -> core2.getData(identifier, false)).data;
         assertNotNull(result);
         assertEquals(((RawData) result).getData(), SIMPLE_DATA_1.getData());
         assertEquals(((RawData) result).getAttachments().size(), attachment.size());
         assertTrue(((RawData) result).getAttachments().contains(identifierA));
 
-        assertThrows(DataUnavailableException.class,() -> core3.getData(identifierA, true));
-        assertThrows(DataUnavailableException.class,() -> core3.getData(identifier, true));
+        assertThrows(DataUnavailableException.class,() -> core3.getData(identifierA, false));
+        assertThrows(DataUnavailableException.class,() -> core3.getData(identifier, false));
     }
 
     @Test
     void Grant_Data_Over_Attachment_Direct() throws Exception {
         DataIdentifier identifierA = assertDoesNotThrow(() -> core1.storeData(SIMPLE_DATA_1));
         Awaiter.awaitData(identifierA, core1);
-
+        assertDoesNotThrow(() -> core1.grantAccess(identifierA, subject1));
+        Awaiter.awaitPermanentData(identifierA, core1);
 
         Set<DataIdentifier> attachment = Set.of(identifierA);
         Data dataWithAttachment = new RawData(SIMPLE_DATA_1.getData(), attachment);
         DataIdentifier identifier = assertDoesNotThrow(() -> core1.storeData(dataWithAttachment));
         assertNotNull(identifier);
         Awaiter.awaitData(identifier, core1);
+        assertDoesNotThrow(() -> core1.grantAccess(identifier, subject1));
+        Awaiter.awaitPermanentData(identifier, core1);
+
 
         assertDoesNotThrow(() -> core1.grantAccess(identifier, subject2));
-        Awaiter.awaitData(identifier, core2);
+        Awaiter.awaitPermanentData(identifier, core2);
 
-        Capability cap = assertDoesNotThrow(() -> core2.exportCapability(identifier, true)).data;
+        Capability cap = assertDoesNotThrow(() -> core2.exportCapability(identifier, false)).data;
         assertNotNull(cap);
 
         Payload result = assertDoesNotThrow(() -> core.getDataDirect(cap)).data;
@@ -279,13 +253,20 @@ class GetDataIT {
         DataIdentifier identifier = assertDoesNotThrow(() -> core1.storeData(SIMPLE_DATA_1));
         assertNotNull(identifier);
         Awaiter.awaitData(identifier, core1);
+        assertDoesNotThrow(() -> core1.grantAccess(identifier, subject1));
+        Awaiter.awaitPermanentData(identifier, core1);
 
         DataIdentifier identifierA = assertDoesNotThrow(() -> core1.storeData(SIMPLE_DATA_1));
         assertNotNull(identifierA);
         Awaiter.awaitData(identifierA, core1);
+        assertDoesNotThrow(() -> core1.grantAccess(identifierA, subject1));
+        Awaiter.awaitPermanentData(identifierA, core1);
+
 
         assertDoesNotThrow(() -> core1.amendDocument(identifier, identifierA));
-        Set<DataIdentifier> amends = core1.listAmendmentsToData(identifier, true);
+        Awaiter.awaitPermanentAmendment(identifier,identifierA, core1);
+
+        Set<DataIdentifier> amends = core1.listAmendmentsToData(identifier, false);
 
         assertNotNull(amends);
         assertTrue(!amends.isEmpty());

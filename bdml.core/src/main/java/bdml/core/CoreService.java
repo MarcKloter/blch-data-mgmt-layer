@@ -83,7 +83,8 @@ public class CoreService implements Core{
         //without attackers around will only run once
         while (true) {
             //will use a different nonce each time
-            byte[] serializedDoc = Crypto.salt(CoreService.serializer.serializePayload(payload));
+            Document doc = CoreService.assemblePlainDocument(payload);
+            byte[] serializedDoc = serializer.serializeDocument(doc);
             Capability capability = Capability.of(serializedDoc);
             if(CoreService.blockchain.storeDocument(capability.getIdentifier().toByteArray(), serializedDoc, false)){
                 // resolve subjects to public keys that will be able to read the data
@@ -113,12 +114,19 @@ public class CoreService implements Core{
         return null;
     }
 
+    static Document assemblePlainDocument(Payload payload) {
+        byte[] res = Crypto.salt(CoreService.serializer.serializePayload(payload));
+        return new Document(VERSION,res);
+    }
 
     private static QueryResult<Document> deserializeDoc(QueryResult<byte[]> serializedDoc) {
+
         QueryResult<Document> doc;
         try {
             doc = new QueryResult<>(CoreService.serializer.deserializeDocument(serializedDoc.data), serializedDoc.inclusionTime, serializedDoc.plain);
         } catch (DeserializationException e) {
+            System.out.println("DESER: "+e.getMessage());
+            //throw new IllegalArgumentException(e);
             LOGGER.error(String.format("Attempted to deserialize a malformed frame: %s", e.getMessage()));
             return null;
         }

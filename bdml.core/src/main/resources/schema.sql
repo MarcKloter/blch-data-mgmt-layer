@@ -4,9 +4,12 @@ CREATE TABLE DATA(
     temporary BOOLEAN NOT NULL,
 );
 
+//Todo: Think of an isValid Cache -- is it worth it???
+
 CREATE TABLE LINKS(
     source BINARY(32) NOT NULL,
     target BINARY(32) NOT NULL,
+    temporary BOOLEAN NOT NULL,
     amend BOOLEAN NOT NULL,
 );
 

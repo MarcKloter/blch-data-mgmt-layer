@@ -44,7 +44,7 @@ public class KryoSerializer implements Serializer {
     }
 
     @Override
-    public byte[] serializePayload(Payload payload) {
+    public synchronized byte[] serializePayload(Payload payload) {
         ByteArrayOutputStream b = new ByteArrayOutputStream();
         Output output = new Output(b);
         kryo.writeClassAndObject(output, payload);
@@ -52,7 +52,7 @@ public class KryoSerializer implements Serializer {
     }
 
     @Override
-    public Payload deserializePayload(byte[] payload) throws DeserializationException {
+    public synchronized Payload deserializePayload(byte[] payload) throws DeserializationException {
         try {
             Input input = new Input(payload);
             return (Payload)kryo.readClassAndObject(input);
@@ -63,7 +63,7 @@ public class KryoSerializer implements Serializer {
     }
 
     @Override
-    public byte[] serializeDocument(Document doc) {
+    public synchronized byte[] serializeDocument(Document doc) {
         //Make sure that we do not serialize a subclass
         Document realDoc = new Document(doc.getVersion(),doc.getPayload());
         ByteArrayOutputStream b = new ByteArrayOutputStream();
@@ -73,7 +73,7 @@ public class KryoSerializer implements Serializer {
     }
 
     @Override
-    public Document deserializeDocument(byte[] doc) throws DeserializationException {
+    public synchronized Document deserializeDocument(byte[] doc) throws DeserializationException {
         try {
             Input input = new Input(doc);
             return kryo.readObject(input, Document.class);

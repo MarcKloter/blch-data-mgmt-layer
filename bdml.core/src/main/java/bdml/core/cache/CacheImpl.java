@@ -12,6 +12,7 @@ import org.h2.tools.RunScript;
 import java.io.InputStreamReader;
 import java.sql.*;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class CacheImpl implements PersonalCache {
     // mandatory configuration properties
@@ -41,8 +42,9 @@ public class CacheImpl implements PersonalCache {
         return configuration.getProperty(property);
     }
 
+
     @Override
-    public void addCapability(Capability capability, boolean temporary) {
+    public Status addCapability(Capability capability, boolean temporary) {
         try {
             DataIdentifier identifier = capability.getIdentifier();
             Optional<Data> data = getData(identifier);
@@ -51,6 +53,15 @@ public class CacheImpl implements PersonalCache {
                 if(!temporary){
                     addToLog(identifier);
                 }
+                return Status.Missing;
+            } else if(data.get().isTemporary()){
+                if(!temporary){
+                    addToLog(identifier);
+                    makeDataPermanent(capability.getIdentifier());
+                }
+                return Status.Temporary;
+            } else {
+                return Status.Permanent;
             }
         } catch (SQLException e) {
             switch (e.getErrorCode()) {
@@ -64,12 +75,23 @@ public class CacheImpl implements PersonalCache {
     }
 
     @Override
-    public void addLink(DataIdentifier source, DataIdentifier target, boolean isAmend) {
+    public Status addLink(DataIdentifier source, DataIdentifier target, boolean isAmend, boolean temporary) {
         try {
-            Link link = new Link(source.toByteArray(), target.toByteArray(), isAmend);
-            if (!hasLink(link)) {
-                setLink(link);
+            Link link = new Link(source.toByteArray(), target.toByteArray(), isAmend, temporary);
+            Status status = linkStatus(link);
+            switch (status) {
+                case Missing:
+                    setLink(link);
+                    break;
+                case Temporary:
+                    if(!temporary) {
+                        makeLinkPermanent(source,target,isAmend);
+                    }
+                    break;
+                case Permanent:
+                    break;
             }
+            return status;
         } catch (SQLException e) {
             switch (e.getErrorCode()) {
                 case 22001: // VALUE_TOO_LONG
@@ -82,45 +104,14 @@ public class CacheImpl implements PersonalCache {
     }
 
     @Override
-    public Optional<Capability> getCapability(DataIdentifier identifier) {
-        try {
-            Optional<Data> data = getData(identifier);
-            return data.map(Data::getCapability).map(Capability::new);
-        } catch (SQLException e) {
-            throw new MisconfigurationException(e.getMessage());
-        }
-    }
-
-    @Override
-    public Set<DataIdentifier> getLink(DataIdentifier identifier, boolean isAmend) {
-        String sql = "SELECT target FROM LINK WHERE source = ? AND amend = ?";
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setBytes(1, identifier.toByteArray());
-            stmt.setBoolean(2, isAmend);
-            try (ResultSet rs = conn.createStatement().executeQuery(sql)) {
-                Set<DataIdentifier> result = new HashSet<>();
-                while (rs.next())
-                    result.add(new DataIdentifier(rs.getBytes("identifier")));
-                return result;
-            }
-        }catch (SQLException e) {
-            throw new MisconfigurationException(e.getMessage());
-        }
-
-    }
-
-    @Override
-    public Optional<Boolean> makePermanentIfExists(DataIdentifier identifier){
+    public Optional<Capability> getCapability(DataIdentifier identifier, boolean includeTemporary) {
         try {
             Optional<Data> data = getData(identifier);
             if(data.isPresent()) {
-                if(data.get().isTemporary()) {
-                    addToLog(identifier);
-                    makePermanent(identifier);
-                    return Optional.of(true);
-                } else {
-                    return Optional.of(false);
+                if(data.get().isTemporary() && !includeTemporary) {
+                    return Optional.empty();
                 }
+                return Optional.of(new Capability(data.get().getCapability()));
             } else {
                 return Optional.empty();
             }
@@ -129,6 +120,38 @@ public class CacheImpl implements PersonalCache {
         }
     }
 
+    @Override
+    public Set<DataIdentifier> getLinkTarget(DataIdentifier identifier, boolean isAmend, boolean includeTemporary) {
+        try {
+            Set<Link> links = getLinks(identifier);
+            return links.stream()
+                    .filter(l -> l.isAmend() == isAmend && (!l.isTemporary() || includeTemporary))
+                    .map(l -> new DataIdentifier(l.getTarget()))
+                    .collect(Collectors.toSet());
+        } catch (SQLException e) {
+            throw new MisconfigurationException(e.getMessage());
+        }
+    }
+
+    @Override
+    public Status makeDataPermanentIfExists(DataIdentifier identifier){
+        try {
+            Optional<Data> data = getData(identifier);
+            if(data.isPresent()) {
+                if(data.get().isTemporary()) {
+                    addToLog(identifier);
+                    makeDataPermanent(identifier);
+                    return Status.Temporary;
+                } else {
+                    return Status.Permanent;
+                }
+            } else {
+                return Status.Missing;
+            }
+        } catch (SQLException e) {
+            throw new MisconfigurationException(e.getMessage());
+        }
+    }
 
 
     @Override
@@ -199,25 +222,43 @@ public class CacheImpl implements PersonalCache {
         }
     }
 
+    private Set<Link> getLinks(DataIdentifier identifier) throws SQLException {
+        String sql = "SELECT * FROM LINKS WHERE source = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setBytes(1, identifier.toByteArray());
+            try (ResultSet rs = stmt.executeQuery()) {
+                return Link.buildAllFrom(rs);
+            }
+        }
+    }
+
     private void setLink(Link link) throws SQLException {
-        String sql = "INSERT INTO LINK(source, target, amend) VALUES(?, ?, ?)";
+        String sql = "INSERT INTO LINKS(source, target, amend, temporary) VALUES(?, ?, ?, ?)";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setBytes(1, link.getSource());
             stmt.setBytes(2, link.getTarget());
             stmt.setBoolean(3, link.isAmend());
+            stmt.setBoolean(4, link.isTemporary());
             stmt.executeUpdate();
         }
     }
 
-    private boolean hasLink(Link link) throws SQLException {
-        String sql = "SELECT  * FROM LINK LIMIT 1 WHERE source = ? AND target = ? AND amend = ?";
+    private Status linkStatus(Link link) throws SQLException {
+        String sql = "SELECT * FROM LINKS WHERE source = ? AND target = ? AND amend = ?";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setBytes(1, link.getSource());
             stmt.setBytes(2, link.getTarget());
             stmt.setBoolean(3, link.isAmend());
-            stmt.executeUpdate();
             try (ResultSet rs = stmt.executeQuery()) {
-                return rs.next();
+                if(rs.next()) {
+                    if(rs.getBoolean("temporary")){
+                        return Status.Temporary;
+                    } else {
+                        return Status.Permanent;
+                    }
+                } else {
+                    return Status.Missing;
+                }
             }
         }
     }
@@ -230,10 +271,20 @@ public class CacheImpl implements PersonalCache {
         }
     }
 
-    private void makePermanent(DataIdentifier identifier) throws SQLException {
+    private void makeDataPermanent(DataIdentifier identifier) throws SQLException {
         String sql = "UPDATE DATA SET temporary = false WHERE identifier = ?";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setBytes(1, identifier.toByteArray());
+            stmt.executeUpdate();
+        }
+    }
+
+    private void makeLinkPermanent(DataIdentifier source, DataIdentifier target, boolean amend) throws SQLException {
+        String sql = "UPDATE LINKS SET temporary = false WHERE source = ? AND target = ? AND amend = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setBytes(1, source.toByteArray());
+            stmt.setBytes(2, target.toByteArray());
+            stmt.setBoolean(3, amend);
             stmt.executeUpdate();
         }
     }

@@ -5,6 +5,7 @@ import bdml.core.domain.Data;
 import bdml.core.domain.DataIdentifier;
 import bdml.core.persistence.Payload;
 
+import java.util.HashSet;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -15,11 +16,23 @@ public class RawPayload implements Payload {
 
     private RawPayload() {}
 
+    RawPayload(String data) {
+        this.data = data;
+        this.attachments = new HashSet<>();//Set.of(); <-- does not support null
+    }
+
     RawPayload(String data, Set<Capability> attachments) {
         this.data = data;
         this.attachments = attachments;
     }
 
+    public String getData() {
+        return data;
+    }
+
+    public Set<Capability> getAttachments() {
+        return attachments;
+    }
 
     @Override
     public Data processCapabilities(Function<Capability, DataIdentifier> converter) {

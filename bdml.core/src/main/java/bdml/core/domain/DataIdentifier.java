@@ -5,8 +5,9 @@ import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
 
 import java.util.Arrays;
+import java.util.Optional;
 
-public class DataIdentifier {
+public class DataIdentifier implements Link{
     public static final int BYTES = 32;
     private final byte[] identifier;
 
@@ -52,5 +53,15 @@ public class DataIdentifier {
         final DataIdentifier that = (DataIdentifier) other;
 
         return Arrays.equals(this.toByteArray(), that.toByteArray());
+    }
+
+    @Override
+    public Optional<Capability> getCapability() {
+        return Optional.empty();
+    }
+
+    @Override
+    public DataIdentifier getIdentifier() {
+        return this;
     }
 }

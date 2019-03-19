@@ -4,8 +4,9 @@ import bdml.core.helper.Crypto;
 import bdml.core.domain.exceptions.CapabilityFormatException;
 
 import java.util.Arrays;
+import java.util.Optional;
 
-public class Capability {
+public class Capability implements Link{
     public static final int BYTES = 32;
 
     private final byte[] capability;
@@ -29,8 +30,14 @@ public class Capability {
         return new Capability(digest);
     }
 
+    @Override
     public DataIdentifier getIdentifier() {
         return identifier;
+    }
+
+    @Override
+    public Optional<Capability> getCapability() {
+        return Optional.of(this);
     }
 
     public byte[] toByteArray() {

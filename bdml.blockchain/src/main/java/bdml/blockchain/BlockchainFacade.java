@@ -41,11 +41,11 @@ public class BlockchainFacade implements Blockchain {
     }
 
 
-    private void checkTokenInputValidity(byte[] identifier, byte[] token) {
+    private void checkTokenInputValidity(byte[] identifier, byte[] token, int size) {
         Objects.requireNonNull(identifier, "Parameter 'identifier' cannot be null.");
         Objects.requireNonNull(token, "Parameter 'token' cannot be null.");
 
-        if(identifier.length != 20)
+        if(identifier.length != size)
             throw new IllegalArgumentException(String.format("The parameter identifier is %d bytes, expected 20 bytes.", identifier.length));
 
         if(token.length == 0)
@@ -55,13 +55,13 @@ public class BlockchainFacade implements Blockchain {
 
     @Override
     public void storeAccessToken(byte[] identifier, byte[] token) {
-        checkTokenInputValidity(identifier, token);
+        checkTokenInputValidity(identifier, token, 20);
         parity.storeToken(identifier, token);
     }
 
     @Override
     public void storeAmendmentToken(byte[] identifier, byte[] token) {
-        checkTokenInputValidity(identifier, token);
+        checkTokenInputValidity(identifier, token, 32);
         parity.storeAmend(identifier, token);
     }
 

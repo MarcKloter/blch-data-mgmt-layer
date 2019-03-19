@@ -10,12 +10,18 @@ import java.util.Set;
 
 public interface PersonalCache {
 
+
+    enum Status {
+        Missing, Temporary, Permanent
+    }
+
     /**
      * @param capability
+     * @return the status of the capability before it was added
      */
-    void addCapability(Capability capability, boolean temporary);
+    Status addCapability(Capability capability, boolean temporary);
 
-    void addLink(DataIdentifier source, DataIdentifier target, boolean isAmend);
+    Status addLink(DataIdentifier source, DataIdentifier target, boolean isAmend, boolean isTemporary);
 
     /**
      * Queries the cache owned by the provided account for the provided identifier.
@@ -23,12 +29,12 @@ public interface PersonalCache {
      * @param identifier byte array containing a 32 bytes identifier
      * @return Byte array containing the cached capability or null.
      */
-    Optional<Capability> getCapability(DataIdentifier identifier);
+    Optional<Capability> getCapability(DataIdentifier identifier, boolean includeTemporary);
 
-    Set<DataIdentifier> getLink(DataIdentifier identifier, boolean isAmend);
+    Set<DataIdentifier> getLinkTarget(DataIdentifier identifier, boolean isAmend, boolean includeTemporary);
 
     //Returns the status of isTemporary before update
-    Optional<Boolean> makePermanentIfExists(DataIdentifier identifier);
+    Status makeDataPermanentIfExists(DataIdentifier identifier);
 
     Set<DataIdentifier> getAllIdentifiers();
 

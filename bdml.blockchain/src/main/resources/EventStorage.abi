@@ -7,6 +7,24 @@
 				"type": "uint256"
 			},
 			{
+				"name": "token",
+				"type": "bytes"
+			}
+		],
+		"name": "newAmend",
+		"outputs": [],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [
+			{
+				"name": "identifier",
+				"type": "uint256"
+			},
+			{
 				"name": "document",
 				"type": "bytes"
 			}
@@ -30,24 +48,6 @@
 			}
 		],
 		"name": "newAccess",
-		"outputs": [],
-		"payable": false,
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"constant": false,
-		"inputs": [
-			{
-				"name": "identifier",
-				"type": "uint160"
-			},
-			{
-				"name": "token",
-				"type": "bytes"
-			}
-		],
-		"name": "newAmend",
 		"outputs": [],
 		"payable": false,
 		"stateMutability": "nonpayable",
@@ -128,7 +128,7 @@
 			{
 				"indexed": true,
 				"name": "identifier",
-				"type": "uint160"
+				"type": "uint256"
 			},
 			{
 				"indexed": false,

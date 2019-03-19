@@ -39,7 +39,11 @@ public class PersonalCoreService implements PersonalCore {
 
         //lookup the capability and transform data into payload
         //The false eis for integrity else someone can store a link to an attachment that will never exist
-        Payload payload =  data.resolveAttachments(id -> lookupCapability(id, false));
+        Set<DataIdentifier> links = new HashSet<>();
+        Payload payload =  data.resolveAttachments(id -> {
+            links.add(id);
+            return lookupCapability(id, false);
+        });
 
         //check if a valid payload for this type was produced
         //checking this here instead onf data allows to rect on missing capabilities
@@ -47,8 +51,6 @@ public class PersonalCoreService implements PersonalCore {
         if(payload == null || !payload.isValid()) {
             return null;
         }
-
-
         //without attackers around will only run once
         while (true) {
             //will use a different nonce each time
@@ -57,6 +59,10 @@ public class PersonalCoreService implements PersonalCore {
 
             if(CoreService.blockchain.storeDocument(doc.getIdentifier().toByteArray(), serializedDoc, true)){
                 cache.addCapability(doc.getCapability(), true);
+                for(DataIdentifier link : links){
+                    //Add the links temporally
+                    cache.addLink(doc.getIdentifier(),link,false,true);
+                }
                 return doc.getIdentifier();
             }
         }
@@ -91,6 +97,7 @@ public class PersonalCoreService implements PersonalCore {
         if(capOrig == null) throw new DataUnavailableException(original);
         Capability capNew = lookupCapability(amendment, false);
         if(capNew == null) throw new DataUnavailableException(amendment);
+        cache.addLink(capOrig.getIdentifier(), capNew.getIdentifier(), true, true);
         generateAmendment(capOrig,capNew);
     }
 
@@ -98,6 +105,7 @@ public class PersonalCoreService implements PersonalCore {
     @Override
     public DataIdentifier publishData(Data data) {
         Assert.requireNonNull(data, "data");
+
         //lookup the capability and transform data into payload
         Payload payload =  data.resolveAttachments(id -> lookupCapability(id, false));
 
@@ -111,7 +119,8 @@ public class PersonalCoreService implements PersonalCore {
         //without attackers around will only run once
         while (true) {
             //will use a different nonce each time
-            byte[] serializedDoc = Crypto.salt(CoreService.serializer.serializePayload(payload));
+            Document doc = CoreService.assemblePlainDocument(payload);
+            byte[] serializedDoc = CoreService.serializer.serializeDocument(doc);
             Capability capability = Capability.of(serializedDoc);
             if(CoreService.blockchain.storeDocument(capability.getIdentifier().toByteArray(), serializedDoc, false)){
                 // resolve subjects to public keys that will be able to read the data
@@ -123,17 +132,17 @@ public class PersonalCoreService implements PersonalCore {
 
 
     @Override
-    public Set<DataIdentifier> listAmendmentsToData(DataIdentifier identifier) {
+    public Set<DataIdentifier> listAmendmentsToData(DataIdentifier identifier, boolean includeTemporary) {
         Assert.requireNonNull(identifier, "identifier");
         updateIndexes();
-        return cache.getLink(identifier, true);
+        return cache.getLinkTarget(identifier, true,includeTemporary);
     }
 
     @Override
-    public Set<DataIdentifier> listAttachmentsToData(DataIdentifier identifier) {
+    public Set<DataIdentifier> listAttachmentsToData(DataIdentifier identifier, boolean includeTemporary) {
         Assert.requireNonNull(identifier, "identifier");
         updateIndexes();
-        return cache.getLink(identifier, false);
+        return cache.getLinkTarget(identifier, false,includeTemporary);
     }
 
     @Override
@@ -144,24 +153,35 @@ public class PersonalCoreService implements PersonalCore {
 
 
     @Override
-    public QueryResult<Data> getData(DataIdentifier identifier) throws DataUnavailableException {
+    public QueryResult<Data> getData(DataIdentifier identifier, boolean includeTemporary) throws DataUnavailableException {
         Assert.requireNonNull(identifier, "identifier");
         updateIndexes();
-        QueryResult<ValidDocument> frame = extractValidDocument(identifier, CoreService.getDocument(identifier, true));
+        QueryResult<Payload> frame = extractValid(identifier, CoreService.getDocument(identifier, includeTemporary), includeTemporary);
         if(frame == null || frame.data == null) throw new DataUnavailableException(identifier);
-        return new QueryResult<>(frame.data.getPayload().processCapabilities(Capability::getIdentifier),frame.inclusionTime,frame.plain);
+        return new QueryResult<>(frame.data.processCapabilities(Capability::getIdentifier),frame.inclusionTime,frame.plain);
+    }
+
+    @Override
+    public QueryResult<Capability> exportCapability(DataIdentifier identifier, boolean includeTemporary) throws DataUnavailableException {
+        Assert.requireNonNull(identifier, "identifier");
+        updateIndexes();
+        Optional<Capability> capability = cache.getCapability(identifier, includeTemporary);
+        if(capability.isEmpty())throw new DataUnavailableException(identifier);
+        QueryResult<Payload> frame = extractValid(identifier, CoreService.getDocument(identifier, includeTemporary), includeTemporary);
+        if(frame == null || frame.data == null) throw new DataUnavailableException(identifier);
+        return new QueryResult<>(capability.get(),frame.inclusionTime,frame.plain);
     }
 
 
     //------------------------------------------------------------------------------------------------------------------
     //endregion
 
-
-    private Capability lookupCapability(DataIdentifier id, boolean includePending) {
-        //todo: can we hit cache??? or other shortcut???
-        QueryResult<ValidDocument> frame = extractValidDocument(id, CoreService.getDocument(id, includePending));
+    private Capability lookupCapability(DataIdentifier identifier, boolean includePending) {
+        Optional<Capability> capability = cache.getCapability(identifier, true);
+        if(capability.isEmpty()) return null;
+        QueryResult<Payload> frame = extractValid(identifier, CoreService.getDocument(identifier, includePending), true);
         if(frame == null || frame.data == null) return null;
-        return frame.data.getCapability();
+        return capability.get();
     }
 
 
@@ -178,7 +198,7 @@ public class PersonalCoreService implements PersonalCore {
     private AccessToken assembleCapabilityToken(Capability capability, Capability subject) {
         byte[] encryptedCapability = Crypto.capabilityEncrypt(subject, capability.toByteArray());
         //Make a t a better place
-        byte[] ident = subject.toByteArray();
+        byte[] ident = subject.getIdentifier().toByteArray();
         return new AccessToken(VERSION, ident, encryptedCapability);
     }
 
@@ -193,13 +213,18 @@ public class PersonalCoreService implements PersonalCore {
         return new AccessibleDocument(new Document(VERSION,res.getValue()), res.getKey());
     }
 
+    private QueryResult<Payload> extractValid(DataIdentifier identifier, List<QueryResult<Document>> docs, boolean includeTemporary){
+        if(docs.isEmpty()) return null;
+        Optional<Capability> capability = cache.getCapability(identifier, includeTemporary);
+        QueryResult<Payload> payload;
 
-    private QueryResult<ValidDocument> extractValidDocument(DataIdentifier identifier, List<QueryResult<Document>> docs) {
-        Optional<Capability> capability = cache.getCapability(identifier);
-        if(capability.isEmpty()) return null;
-        QueryResult<Payload> payload = CoreService.extractValidPayload(capability.get(), docs);
+        if(capability.isEmpty()) {
+            payload = CoreService.extractValidPublicPayload(identifier, docs);
+        } else {
+            payload = CoreService.extractValidPayload(capability.get(), docs);
+        }
         if(payload == null || payload.data == null) return null;
-        return new QueryResult<>(new ValidDocument(payload.data,capability.get()),payload.inclusionTime,true);
+        return new QueryResult<>(payload.data,payload.inclusionTime,true);
     }
 
 
@@ -229,31 +254,57 @@ public class PersonalCoreService implements PersonalCore {
         }
     }
 
-    private void processRecursively(Capability capability){
+    private void processEncryptedRecursively(Capability initialCap) {
         Queue<Capability> recursive = new LinkedList<>();
-        recursive.offer(capability);
+        recursive.offer(initialCap);
+        processRecursively(recursive);
+    }
 
+    private void processPlainRecursively(DataIdentifier id, Payload payload) {
+        System.out.println("Seen: "+id+" for: "+getActiveAccount());
+        if(cache.makeDataPermanentIfExists(id) == PersonalCache.Status.Permanent) return;
+        System.out.println("Process: "+id+" for: "+getActiveAccount());
+        Queue<Capability> recursive = new LinkedList<>();
+        offerDependencies(id,payload,recursive);
+        processRecursively(recursive);
+    }
+
+
+    private void offerLink(DataIdentifier source, Capability target, boolean amend, Queue<Capability> recursive) {
+        if(cache.addLink(source, target.getIdentifier(), amend, false) != PersonalCache.Status.Permanent){
+            recursive.offer(target);
+        }
+    }
+
+    private void offerDependencies(DataIdentifier source, Payload payload, Queue<Capability> recursive) {
+        payload.processCapabilities(linkCap -> {
+            offerLink(source,linkCap,false, recursive);
+            return linkCap.getIdentifier();
+        });
+    }
+
+    private void offerAmendments(Capability source, Queue<Capability> recursive) {
+        List<QueryResult<byte[]>> amendments = CoreService.blockchain.getAllAmendmentTokensFor(source.getIdentifier().toByteArray());
+        for(QueryResult<byte[]> amend :amendments) {
+            decryptAmendmentToken(source, amend.data).ifPresent(amendCap -> offerLink(source.getIdentifier(),amendCap,true,recursive));
+        }
+    }
+
+    private void processRecursively(Queue<Capability> recursive){
         while (!recursive.isEmpty()) {
             Capability cap = recursive.poll();
-            if(cache.makePermanentIfExists(cap.getIdentifier()).orElse(false)) continue;
-            //todo: check if somebody listens on this data: if yes -- we need to call teh callback after processRecursively finished
+            DataIdentifier id = cap.getIdentifier();
+            //we do not add it here as in case it is missing it can still be invalid
+            PersonalCache.Status status = cache.makeDataPermanentIfExists(id);
+            if(status == PersonalCache.Status.Permanent) continue;
 
             QueryResult<Payload> payload = CoreService.extractValidPayload(cap, CoreService.getDocument(cap.getIdentifier(), false));
             if(payload == null || payload.data == null) continue;
-            cache.addCapability(cap, false);
-            payload.data.processCapabilities(linkCap -> {
-                recursive.offer(linkCap);
-                cache.addLink(cap.getIdentifier(), linkCap.getIdentifier(), false);
-                return linkCap.getIdentifier();
-            });
-            List<QueryResult<byte[]>> amendments = CoreService.blockchain.getAllAmendmentTokensFor(cap.getIdentifier().toByteArray());
-            for(QueryResult<byte[]> amend :amendments) {
-                decryptAmendmentToken(cap, amend.data).ifPresent(amendCap -> {
-                    recursive.offer(amendCap);
-                    cache.addLink(cap.getIdentifier(), amendCap.getIdentifier(), true);
-                });
+            if(status == PersonalCache.Status.Missing) {
+                cache.addCapability(cap, false);
             }
-
+            offerDependencies(id,payload.data,recursive);
+            offerAmendments(cap,recursive);
         }
     }
 
@@ -265,26 +316,33 @@ public class PersonalCoreService implements PersonalCore {
         List<QueryResult<byte[]>> plainDocs = CoreService.blockchain.getAllPlainIds(nextBlock, currentBlock+1);
         for (QueryResult<byte[]> docId : plainDocs) {
             DataIdentifier identifier = new DataIdentifier(docId.data);
-            QueryResult<ValidDocument> frame = extractValidDocument(identifier, CoreService.getDocument(identifier, false));
+            QueryResult<Payload> frame = extractValid(identifier, CoreService.getDocument(identifier, false), true);
             if(frame == null || frame.data == null) continue;
-            processRecursively(frame.data.getCapability());
+            processPlainRecursively(identifier,frame.data);
         }
 
         List<QueryResult<byte[]>> newTokens = CoreService.blockchain.getAllTokens(nextBlock, currentBlock+1, account.getSubject().toBytes());
         for (QueryResult<byte[]> rawToken : newTokens) {
             Optional<Capability> cap = decryptAccessToken(rawToken.data);
             if(cap.isEmpty()) continue;
-            processRecursively(cap.get());
+            processEncryptedRecursively(cap.get());
         }
 
         List<QueryResult<Pair<byte[],byte[]>>> newAmendments = CoreService.blockchain.getAllAmendmentTokens(nextBlock, currentBlock+1);
         for(QueryResult<Pair<byte[],byte[]>> rawToken : newAmendments) {
-            Optional<Capability> source = cache.getCapability(new DataIdentifier(rawToken.data.first));
+            DataIdentifier id = new DataIdentifier(rawToken.data.first);
+            boolean isTempSource = false;
+            Optional<Capability> source = cache.getCapability(id, isTempSource);
+            if(source.isEmpty()) {
+                isTempSource = true;
+                source = cache.getCapability(id, isTempSource);
+            }
             if(source.isEmpty()) continue;
+
             Optional<Capability> cap = decryptAmendmentToken(source.get(), rawToken.data.second);
             if(cap.isEmpty()) continue;
-            cache.addLink(source.get().getIdentifier(), cap.get().getIdentifier(), true);
-            processRecursively(cap.get());
+            cache.addLink(id, cap.get().getIdentifier(), true, isTempSource);
+            if(!isTempSource) processEncryptedRecursively(cap.get());
         }
 
         cache.setPointer(currentBlock+1);

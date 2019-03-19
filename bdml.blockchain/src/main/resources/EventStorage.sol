@@ -18,12 +18,10 @@ contract EventStorage {
     );
 
     event AmendEvent (
-        uint160 indexed identifier,
+        // 32 bytes identifier: hash(capability)
+        uint indexed identifier,
         bytes token
     );
-
-
-    //Todo: BlobEvent -- combining N AccessTokens + M Documents
 
     function newSecretData(uint identifier, bytes memory document) public {
         emit SecretDataEvent(identifier, document);
@@ -37,7 +35,7 @@ contract EventStorage {
         emit AccessEvent(identifier, token);
     }
 
-    function newAmend(uint160 identifier, bytes memory token) public {
+    function newAmend(uint identifier, bytes memory token) public {
         emit AmendEvent(identifier, token);
     }
 
