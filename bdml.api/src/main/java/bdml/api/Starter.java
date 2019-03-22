@@ -34,9 +34,7 @@ public class Starter {
             LOGGER.error(e.getMessage());
             System.exit(1);
         });
-
-        // TODO: exceptions thrown by core proxy are being e.printStackTrace()'ed
-
+        
         CoreProxy coreService;
         try {
             coreService = new CoreProxy();
