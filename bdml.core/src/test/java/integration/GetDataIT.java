@@ -274,6 +274,7 @@ class GetDataIT {
 
     }
 
+
     @Test
     void Get_Data_With_Amendment() throws Exception {
         DataIdentifier identifier = assertDoesNotThrow(() -> core1.storeData(SIMPLE_DATA_1));
@@ -293,7 +294,75 @@ class GetDataIT {
 
     }
 
-    //to do: Amendment -> Attachement
-    //to do: Attachement -> Amendment
+
+    @Test
+    void Get_Data_With_Amendment_Then_Attachement() throws Exception {
+        DataIdentifier identifier = assertDoesNotThrow(() -> core1.storeData(SIMPLE_DATA_1));
+        assertNotNull(identifier);
+        Awaiter.awaitData(identifier, core1);
+
+        DataIdentifier identifierA0 = assertDoesNotThrow(() -> core1.storeData(SIMPLE_DATA_2));
+        assertNotNull(identifierA0);
+        Awaiter.awaitData(identifierA0, core1);
+
+
+        Set<DataIdentifier> attachment = Set.of(identifierA0);
+        Data dataWithAttachment = new RawData(SIMPLE_DATA_1.getData(), attachment);
+        DataIdentifier identifierA1 = assertDoesNotThrow(() -> core1.storeData(dataWithAttachment));
+        assertNotNull(identifierA1);
+        Awaiter.awaitData(identifierA1, core1);
+
+        assertDoesNotThrow(() -> core1.amendDocument(identifier, identifierA1));
+        assertDoesNotThrow(() -> core1.grantAccess(identifier, subject2));
+
+        Awaiter.awaitData(identifierA0, core2);
+
+        Data result0 = assertDoesNotThrow(() -> core2.getData(identifierA0, true)).data;
+        assertNotNull(result0);
+        assertEquals(((RawData) result0).getData(), SIMPLE_DATA_2.getData());
+
+        Data result1 = assertDoesNotThrow(() -> core2.getData(identifierA1, true)).data;
+        assertNotNull(result1);
+        assertEquals(((RawData) result1).getData(), SIMPLE_DATA_1.getData());
+        assertEquals(((RawData) result1).getAttachments().size(), attachment.size());
+        assertTrue(((RawData) result1).getAttachments().contains(identifierA0));
+    }
+
+    @Test
+    void Get_Data_With_Attachement_Then_Amendment() throws Exception {
+        DataIdentifier identifier = assertDoesNotThrow(() -> core1.storeData(SIMPLE_DATA_1));
+        assertNotNull(identifier);
+        Awaiter.awaitData(identifier, core1);
+
+        DataIdentifier identifierA0 = assertDoesNotThrow(() -> core1.storeData(SIMPLE_DATA_2));
+        assertNotNull(identifierA0);
+        Awaiter.awaitData(identifierA0, core1);
+
+
+        Set<DataIdentifier> attachment = Set.of(identifierA0);
+        Data dataWithAttachment = new RawData(SIMPLE_DATA_1.getData(), attachment);
+        DataIdentifier identifierA1 = assertDoesNotThrow(() -> core1.storeData(dataWithAttachment));
+        assertNotNull(identifierA1);
+        Awaiter.awaitData(identifierA1, core1);
+
+        assertDoesNotThrow(() -> core1.amendDocument(identifierA0, identifier));
+        assertDoesNotThrow(() -> core1.grantAccess(identifierA1, subject2));
+
+        Awaiter.awaitData(identifier, core2);
+
+        Data result = assertDoesNotThrow(() -> core2.getData(identifier, true)).data;
+        assertNotNull(result);
+        assertEquals(((RawData) result).getData(), SIMPLE_DATA_1.getData());
+
+        Data result0 = assertDoesNotThrow(() -> core2.getData(identifierA0, true)).data;
+        assertNotNull(result0);
+        assertEquals(((RawData) result0).getData(), SIMPLE_DATA_2.getData());
+
+        Data result1 = assertDoesNotThrow(() -> core2.getData(identifierA1, true)).data;
+        assertNotNull(result1);
+        assertEquals(((RawData) result1).getData(), SIMPLE_DATA_1.getData());
+        assertEquals(((RawData) result1).getAttachments().size(), attachment.size());
+        assertTrue(((RawData) result1).getAttachments().contains(identifierA0));
+    }
 
 }

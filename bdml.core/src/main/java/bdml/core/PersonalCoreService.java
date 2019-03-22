@@ -111,7 +111,7 @@ public class PersonalCoreService implements PersonalCore {
 
         //check if a valid payload for this type was produced
         //checking this here instead onf data allows to rect on missing capabilities
-        //todo: throw instead
+        //todo: throw instead?
         if(payload == null || !payload.isValid()) {
             return null;
         }

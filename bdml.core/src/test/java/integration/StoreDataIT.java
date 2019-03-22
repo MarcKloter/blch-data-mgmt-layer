@@ -105,4 +105,15 @@ class StoreDataIT {
         DataIdentifier identifier = assertDoesNotThrow(() -> core1.storeData(DATA));
         assertNotNull(identifier);
     }
+
+    @Test
+    void Store_Amend() throws Exception {
+        DataIdentifier identifier = assertDoesNotThrow(() -> core1.storeData(DATA));
+        assertNotNull(identifier);
+        Awaiter.awaitData(identifier, core1);
+        DataIdentifier identifier2 = assertDoesNotThrow(() -> core1.storeData(DATA));
+        assertNotNull(identifier2);
+        Awaiter.awaitData(identifier2, core1);
+        assertDoesNotThrow(() -> core1.amendDocument(identifier,identifier2));
+    }
 }

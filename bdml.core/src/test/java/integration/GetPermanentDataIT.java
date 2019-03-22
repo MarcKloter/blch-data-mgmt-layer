@@ -273,8 +273,4 @@ class GetPermanentDataIT {
         assertTrue(amends.contains(identifierA));
 
     }
-
-    //to do: Amendment -> Attachement
-    //to do: Attachement -> Amendment
-
 }
